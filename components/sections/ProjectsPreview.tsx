@@ -5,11 +5,12 @@ import { ArrowRight } from "lucide-react";
 import { useProjects } from "@/lib/hooks/useQueries";
 import { ProjectCard } from "@/components/ui/ProjectCard";
 import { Skeleton } from "@/components/ui";
+import type { Project } from "@/types";
 
 export function ProjectsPreview() {
   const { data: projects, isLoading } = useProjects();
 
-  const featured = projects?.filter((p) => p.status === "open").slice(0, 3) ?? [];
+  const featured = projects?.filter((p: Project) => p.status === "open").slice(0, 3) ?? [];
 
   return (
     <section>
@@ -34,7 +35,7 @@ export function ProjectsPreview() {
         </div>
       ) : featured.length > 0 ? (
         <div className="grid md:grid-cols-3 gap-5">
-          {featured.map((project) => (
+          {featured.map((project: Project) => (
             <ProjectCard key={project.id} project={project} />
           ))}
         </div>

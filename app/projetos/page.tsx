@@ -8,7 +8,7 @@ import { ProjectCard } from "@/components/ui/ProjectCard";
 import { AREA_LABELS } from "@/lib/utils";
 import { useProjects } from "@/lib/hooks/useQueries";
 import { cn } from "@/lib/utils";
-import type { ProjectArea, ProjectStatus } from "@/types";
+import type { Project, ProjectArea, ProjectStatus } from "@/types";
 
 const STATUS_OPTIONS: { value: ProjectStatus | "all"; label: string }[] = [
   { value: "all",         label: "Todos"          },
@@ -58,7 +58,7 @@ export default function ProjetosPage() {
     return result;
   }, [projects, search, status, area, sort]);
 
-  const openCount = projects.filter((p) => p.status === "open").length;
+  const openCount = projects.filter((p: Project) => p.status === "open").length;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

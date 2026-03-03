@@ -10,7 +10,7 @@ const STALE = {
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 export function useProjects(p?: object) {
-  return useQuery({ queryKey: ["projects", p], queryFn: async () => { const { data } = await projectsApi.list(p); return (Array.isArray(data) ? data : []).map(adaptProject); }, staleTime: STALE.medium });
+  return useQuery({ queryKey: ["projects", p], queryFn: async () => { const { data } = await projectsApi.list(p); const items = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []; return items.map(adaptProject); }, staleTime: STALE.medium });
 }
 export function useProject(id: string) {
   return useQuery({ queryKey: ["project", id], queryFn: async () => { const { data } = await projectsApi.byId(id); return adaptProject(data); }, enabled: !!id, staleTime: STALE.short });

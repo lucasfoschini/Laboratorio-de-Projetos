@@ -6,7 +6,7 @@ import Link from "next/link";
 import NextImage from "next/image";
 import {
   ArrowRight, Bell, BookmarkCheck, CheckCircle2, Clock,
-  FlaskConical, LayoutDashboard, Loader2, PlusCircle,
+  FlaskConical, LayoutDashboard, Loader2, PlusCircle, Settings,
   Trash2, Users, XCircle, Pencil, X, Check,
 } from "lucide-react";
 import { Badge, Avatar, Button, Skeleton } from "@/components/ui";
@@ -106,34 +106,34 @@ export default function DashboardPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
       {/* ── Profile ── */}
-      <div className="bg-white border border-neutral-200 rounded-2xl p-5 mb-6 shadow-card">
+      <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-5 mb-6 shadow-card">
         {!editingProfile ? (
           /* MODO VISUALIZAÇÃO */
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl overflow-hidden bg-brand-100 flex items-center justify-center flex-shrink-0">
+              <div className="w-14 h-14 rounded-2xl overflow-hidden bg-brand-100 dark:bg-brand-900 flex items-center justify-center flex-shrink-0">
                 {(user as any).avatar ? (
                   <NextImage src={(user as any).avatar} alt={user.name} width={56} height={56} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="font-display font-extrabold text-brand-700 text-lg">{initials}</span>
+                  <span className="font-display font-extrabold text-brand-700 dark:text-brand-300 text-lg">{initials}</span>
                 )}
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="font-display font-bold text-neutral-900 text-lg">{user.name}</h2>
+                  <h2 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-lg">{user.name}</h2>
                   <Badge variant={user.role === "professor" ? "brand" : "neutral"}>
                     {user.role === "professor" ? "Professor" : "Aluno"}
                   </Badge>
                 </div>
-                <p className="text-sm text-neutral-500 mt-0.5">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
                   {[(user as any).department, (user as any).institution].filter(Boolean).join(" · ") || user.email}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="secondary" onClick={() => setEditingProfile(true)}>
-                <Pencil size={13} /> Editar perfil
-              </Button>
+              <Link href="/perfil" className="p-2 rounded-lg text-neutral-400 hover:text-brand-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all" title="Configurações">
+                <Settings size={17} />
+              </Link>
               <Link href="/projetos/novo">
                 <Button size="sm"><PlusCircle size={14} /> Criar projeto</Button>
               </Link>
@@ -143,27 +143,27 @@ export default function DashboardPage() {
           /* MODO EDIÇÃO */
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-display font-bold text-neutral-800">Editar perfil</h3>
+              <h3 className="font-display font-bold text-neutral-800 dark:text-neutral-200">Editar perfil</h3>
               <button onClick={() => { setEditingProfile(false); setProfileError(""); }}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-all">
+                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all">
                 <X size={15} />
               </button>
             </div>
 
             {/* Preview do avatar */}
-            <div className="flex items-center gap-4 mb-4 p-3 bg-neutral-50 rounded-xl border border-neutral-200">
-              <div className="w-12 h-12 rounded-xl overflow-hidden bg-brand-100 flex items-center justify-center flex-shrink-0">
+            <div className="flex items-center gap-4 mb-4 p-3 bg-neutral-50 dark:bg-neutral-700/50 rounded-xl border border-neutral-200 dark:border-neutral-700">
+              <div className="w-12 h-12 rounded-xl overflow-hidden bg-brand-100 dark:bg-brand-900 flex items-center justify-center flex-shrink-0">
                 {profileForm.avatar ? (
                   <img src={profileForm.avatar} alt="preview" className="w-full h-full object-cover"
                     onError={(e) => (e.currentTarget.style.display = "none")} />
                 ) : (
-                  <span className="font-bold text-brand-700 text-sm">{initials}</span>
+                  <span className="font-bold text-brand-700 dark:text-brand-300 text-sm">{initials}</span>
                 )}
               </div>
               <div className="flex-1">
-                <p className="text-xs font-medium text-neutral-600 mb-1">URL da foto de perfil</p>
+                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">URL da foto de perfil</p>
                 <input
-                  className="w-full h-9 rounded-xl border border-neutral-300 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                  className="w-full h-9 rounded-xl border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
                   value={profileForm.avatar}
                   onChange={e => setProfileForm(f => ({ ...f, avatar: e.target.value }))}
                   placeholder="https://exemplo.com/sua-foto.jpg"
@@ -182,9 +182,9 @@ export default function DashboardPage() {
                 { label: "LinkedIn (URL)", key: "linkedin",    placeholder: "https://linkedin.com/in/..." },
               ].map(({ label, key, placeholder }) => (
                 <div key={key}>
-                  <label className="text-xs font-medium text-neutral-600 mb-1 block">{label}</label>
+                  <label className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1 block">{label}</label>
                   <input
-                    className="w-full h-9 rounded-xl border border-neutral-300 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                    className="w-full h-9 rounded-xl border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
                     value={(profileForm as any)[key]}
                     onChange={e => setProfileForm(f => ({ ...f, [key]: e.target.value }))}
                     placeholder={placeholder}
@@ -192,9 +192,9 @@ export default function DashboardPage() {
                 </div>
               ))}
               <div className="md:col-span-2">
-                <label className="text-xs font-medium text-neutral-600 mb-1 block">Bio</label>
+                <label className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1 block">Bio</label>
                 <textarea rows={2}
-                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm resize-none outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                  className="w-full rounded-xl border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-3 py-2 text-sm resize-none outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
                   value={profileForm.bio}
                   onChange={e => setProfileForm(f => ({ ...f, bio: e.target.value }))}
                   placeholder="Uma breve descrição sobre você..."
@@ -204,7 +204,7 @@ export default function DashboardPage() {
 
             {profileError && <p className="text-xs text-danger-500 mt-3">{profileError}</p>}
 
-            <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-neutral-100">
+            <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-700">
               <Button variant="secondary" size="sm" onClick={() => { setEditingProfile(false); setProfileError(""); }}>
                 Cancelar
               </Button>

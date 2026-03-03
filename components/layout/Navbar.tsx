@@ -99,10 +99,10 @@ function NotificationBell() {
   const unseenCount = useMemo(() => {
     if (!seenAt) return visiblePending.length + visiblePosts.length + visiblePubs.length + visibleSystemNotifs.length;
     const threshold = new Date(seenAt);
-    const newPending = visiblePending.filter((r: any) => !r.createdAt || new Date(r.createdAt) > threshold);
-    const newPosts   = visiblePosts.filter((p: any) => !p.createdAt || new Date(p.createdAt) > threshold);
-    const newPubs    = visiblePubs.filter((p: any) => !p.createdAt || new Date(p.createdAt) > threshold);
-    const newSystem  = visibleSystemNotifs.filter((n: any) => !n.createdAt || new Date(n.createdAt) > threshold);
+    const newPending = visiblePending.filter((r: any) => r.createdAt && new Date(r.createdAt) > threshold);
+    const newPosts   = visiblePosts.filter((p: any) => p.createdAt && new Date(p.createdAt) > threshold);
+    const newPubs    = visiblePubs.filter((p: any) => p.createdAt && new Date(p.createdAt) > threshold);
+    const newSystem  = visibleSystemNotifs.filter((n: any) => n.createdAt && new Date(n.createdAt) > threshold);
     return newPending.length + newPosts.length + newPubs.length + newSystem.length;
   }, [seenAt, visiblePending, visiblePosts, visiblePubs, visibleSystemNotifs]);
 
@@ -167,14 +167,14 @@ function NotificationBell() {
                 {/* Solicitações pendentes nos seus projetos */}
                 {visiblePending.length > 0 && (
                   <>
-                    <div className="px-4 py-2 bg-brand-50 border-b border-brand-100 flex items-center gap-2">
+                    <div className="px-4 py-2 bg-brand-50 dark:bg-brand-950 border-b border-brand-100 dark:border-brand-900 flex items-center gap-2">
                       <Bell size={12} className="text-brand-600" />
-                      <p className="text-xs font-semibold text-brand-700">
+                      <p className="text-xs font-semibold text-brand-700 dark:text-brand-300">
                         {visiblePending.length} solicitação{visiblePending.length !== 1 ? "ões" : ""} pendente{visiblePending.length !== 1 ? "s" : ""}
                       </p>
                     </div>
                     {visiblePending.slice(0, 4).map((req: any) => (
-                      <div key={req.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0">
+                      <div key={req.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors border-b border-neutral-100 dark:border-neutral-700 last:border-0">
                         <Link
                           href="/dashboard"
                           onClick={() => setOpen(false)}
@@ -183,27 +183,27 @@ function NotificationBell() {
                           {req.user?.avatar ? (
                             <NextImage src={req.user.avatar} alt={req.user.name ?? ""} width={28} height={28} className="rounded-full object-cover flex-shrink-0 mt-0.5" loading="lazy" />
                           ) : (
-                            <div className="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <span className="text-[11px] font-bold text-brand-700">
+                            <div className="w-7 h-7 rounded-full bg-brand-100 dark:bg-brand-900 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-[11px] font-bold text-brand-700 dark:text-brand-300">
                                 {req.user?.name?.[0]?.toUpperCase() ?? "?"}
                               </span>
                             </div>
                           )}
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-neutral-800 truncate">
+                            <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate">
                               {req.user?.name ?? "Usuário"} quer entrar em
                             </p>
-                            <p className="text-xs text-neutral-500 truncate">{req.project?.title ?? "seu projeto"}</p>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{req.project?.title ?? "seu projeto"}</p>
                           </div>
                         </Link>
-                        <button onClick={() => handleDismiss(req.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 hover:bg-neutral-100 transition-colors" title="Dispensar">
+                        <button onClick={() => handleDismiss(req.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors" title="Dispensar">
                           <X size={12} />
                         </button>
                       </div>
                     ))}
                     {visiblePending.length > 4 && (
                       <Link href="/dashboard" onClick={() => setOpen(false)}
-                        className="block px-4 py-2 text-xs text-center text-brand-600 hover:bg-brand-50 transition-colors font-semibold border-b border-neutral-100">
+                        className="block px-4 py-2 text-xs text-center text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950 transition-colors font-semibold border-b border-neutral-100 dark:border-neutral-700">
                         Ver todas as {visiblePending.length} solicitações →
                       </Link>
                     )}
@@ -213,48 +213,48 @@ function NotificationBell() {
                 {/* Atividade recente dos projetos acompanhados */}
                 {(visiblePosts.length + visiblePubs.length) > 0 && (
                   <>
-                    <div className="px-4 py-2 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2">
+                    <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950 border-b border-emerald-100 dark:border-emerald-900 flex items-center gap-2">
                       <MessageSquare size={12} className="text-emerald-600" />
-                      <p className="text-xs font-semibold text-emerald-700">
+                      <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                         Novidades nos projetos que você acompanha
                       </p>
                     </div>
                     {visiblePosts.slice(0, 3).map((post: any) => (
-                      <div key={post.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0">
+                      <div key={post.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors border-b border-neutral-100 dark:border-neutral-700 last:border-0">
                         <Link
                           href={`/projetos/${post.projectId}`}
                           onClick={() => setOpen(false)}
                           className="flex items-start gap-3 flex-1 min-w-0"
                         >
-                          <div className="w-7 h-7 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <MessageSquare size={12} className="text-emerald-700" />
+                          <div className="w-7 h-7 rounded-xl bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <MessageSquare size={12} className="text-emerald-700 dark:text-emerald-300" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-neutral-800 line-clamp-1">{post.title}</p>
-                            <p className="text-xs text-neutral-500 truncate">Atualização em {post.project?.title}</p>
+                            <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 line-clamp-1">{post.title}</p>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">Atualização em {post.project?.title}</p>
                           </div>
                         </Link>
-                        <button onClick={() => handleDismiss(post.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 hover:bg-neutral-100 transition-colors" title="Dispensar">
+                        <button onClick={() => handleDismiss(post.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors" title="Dispensar">
                           <X size={12} />
                         </button>
                       </div>
                     ))}
                     {visiblePubs.slice(0, 2).map((pub: any) => (
-                      <div key={pub.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0">
+                      <div key={pub.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors border-b border-neutral-100 dark:border-neutral-700 last:border-0">
                         <Link
                           href="/publicacoes"
                           onClick={() => setOpen(false)}
                           className="flex items-start gap-3 flex-1 min-w-0"
                         >
-                          <div className="w-7 h-7 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <span className="text-[10px] font-bold text-amber-700">PUB</span>
+                          <div className="w-7 h-7 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">PUB</span>
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-neutral-800 line-clamp-1">{pub.title}</p>
-                            <p className="text-xs text-neutral-500 truncate">Nova publicação em {pub.project?.title}</p>
+                            <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 line-clamp-1">{pub.title}</p>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">Nova publicação em {pub.project?.title}</p>
                           </div>
                         </Link>
-                        <button onClick={() => handleDismiss(pub.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 hover:bg-neutral-100 transition-colors" title="Dispensar">
+                        <button onClick={() => handleDismiss(pub.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors" title="Dispensar">
                           <X size={12} />
                         </button>
                       </div>
@@ -265,14 +265,14 @@ function NotificationBell() {
                 {/* Notificações do sistema (saída, remoção, aceitação) */}
                 {visibleSystemNotifs.length > 0 && (
                   <>
-                    <div className="px-4 py-2 bg-violet-50 border-b border-violet-100 flex items-center gap-2">
+                    <div className="px-4 py-2 bg-violet-50 dark:bg-violet-950 border-b border-violet-100 dark:border-violet-900 flex items-center gap-2">
                       <Bell size={12} className="text-violet-600" />
-                      <p className="text-xs font-semibold text-violet-700">
+                      <p className="text-xs font-semibold text-violet-700 dark:text-violet-300">
                         Avisos do sistema
                       </p>
                     </div>
                     {visibleSystemNotifs.slice(0, 5).map((notif: any) => (
-                      <div key={notif.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0">
+                      <div key={notif.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors border-b border-neutral-100 dark:border-neutral-700 last:border-0">
                         <Link
                           href={notif.projectId ? `/projetos/${notif.projectId}` : notif.project?.id ? `/projetos/${notif.project.id}` : "/dashboard"}
                           onClick={() => setOpen(false)}
@@ -280,21 +280,21 @@ function NotificationBell() {
                         >
                           <div className={cn(
                             "w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5",
-                            notif.type === "REQUEST_ACCEPTED" ? "bg-green-100" :
-                            notif.type === "MEMBER_REMOVED"   ? "bg-red-100" :
-                            "bg-violet-100",
+                            notif.type === "REQUEST_ACCEPTED" ? "bg-green-100 dark:bg-green-900" :
+                            notif.type === "MEMBER_REMOVED"   ? "bg-red-100 dark:bg-red-900" :
+                            "bg-violet-100 dark:bg-violet-900",
                           )}>
                             <span className={cn(
                               "text-[10px] font-bold",
-                              notif.type === "REQUEST_ACCEPTED" ? "text-green-700" :
-                              notif.type === "MEMBER_REMOVED"   ? "text-red-700" :
-                              "text-violet-700",
+                              notif.type === "REQUEST_ACCEPTED" ? "text-green-700 dark:text-green-300" :
+                              notif.type === "MEMBER_REMOVED"   ? "text-red-700 dark:text-red-300" :
+                              "text-violet-700 dark:text-violet-300",
                             )}>
                               {notif.type === "REQUEST_ACCEPTED" ? "✓" : notif.type === "MEMBER_REMOVED" ? "✕" : "!"}
                             </span>
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-neutral-800 line-clamp-2">{notif.message}</p>
+                            <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 line-clamp-2">{notif.message}</p>
                             {notif.createdAt && (
                               <p className="text-[10px] text-neutral-400 mt-0.5">
                                 {new Date(notif.createdAt).toLocaleDateString("pt-BR")}
@@ -302,7 +302,7 @@ function NotificationBell() {
                             )}
                           </div>
                         </Link>
-                        <button onClick={() => handleDismiss(notif.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 hover:bg-neutral-100 transition-colors" title="Dispensar">
+                        <button onClick={() => handleDismiss(notif.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors" title="Dispensar">
                           <X size={12} />
                         </button>
                       </div>

@@ -70,13 +70,13 @@ export function ProjectCard({ project, variant = "default" }: ProjectCardProps) 
     return (
       <Link
         href={`/projetos/${project.id}`}
-        className="group flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-50 transition-all border border-transparent hover:border-neutral-200"
+        className="group flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-all border border-transparent hover:border-neutral-200 dark:hover:border-neutral-700"
       >
         <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0", AREA_COLORS[project.area])}>
           <Icon size={16} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-neutral-800 truncate group-hover:text-brand-600 transition-colors">
+          <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
             {project.title}
           </p>
           <p className="text-xs text-neutral-400 mt-0.5">{creator?.name}</p>
