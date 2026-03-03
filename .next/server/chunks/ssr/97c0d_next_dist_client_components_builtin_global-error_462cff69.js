@@ -1,3 +1,0 @@
-module.exports=[65313,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(31545);a.n(d("[project]/Downloads/labex-front/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>"))},62773,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(31545);a.n(d("[project]/Downloads/labex-front/node_modules/next/dist/client/components/builtin/global-error.js"))},47608,a=>{"use strict";a.i(65313);var b=a.i(62773);a.n(b)}];
-
-//# sourceMappingURL=97c0d_next_dist_client_components_builtin_global-error_462cff69.js.map
