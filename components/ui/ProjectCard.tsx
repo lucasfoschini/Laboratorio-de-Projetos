@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Cpu, Heart, BookOpen, Leaf, Scale, Palette, Wrench, Users } from "lucide-react";
 import { Badge, Avatar } from "@/components/ui";
 import { cn, AREA_LABELS, STATUS_LABELS } from "@/lib/utils";
+import { projectsApi } from "@/lib/api/axios";
+import { adaptProject } from "@/lib/adapters";
 import type { Project } from "@/types";
 
 const STATUS_VARIANT: Record<string, "success" | "warning" | "neutral" | "brand"> = {
@@ -41,6 +45,7 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, variant = "default" }: ProjectCardProps) {
+  const queryClient = useQueryClient();
   const Icon = AREA_ICON[project.area] ?? Cpu;
   const enrolled  = project.enrolled  ?? 0;
   const vacancies = project.vacancies ?? 0;
@@ -49,6 +54,17 @@ export function ProjectCard({ project, variant = "default" }: ProjectCardProps) 
   const occupancyPct = vacancies > 0 ? Math.min(100, Math.round((enrolled / vacancies) * 100)) : 100;
 
   const creator = (project as any).owner ?? (project as any).professor;
+
+  const handleMouseEnter = () => {
+    queryClient.prefetchQuery({
+      queryKey: ["project", project.id],
+      queryFn: async () => {
+        const { data } = await projectsApi.byId(project.id);
+        return adaptProject(data);
+      },
+      staleTime: 1000 * 60 * 2, // não re-busca se já tem cache de até 2 min
+    });
+  };
 
   if (variant === "compact") {
     return (
@@ -131,7 +147,13 @@ export function ProjectCard({ project, variant = "default" }: ProjectCardProps) 
             {creator ? (
               <>
                 {creator.avatar ? (
-                  <img src={creator.avatar} alt={creator.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                  <Image
+                    src={creator.avatar}
+                    alt={creator.name}
+                    width={24}
+                    height={24}
+                    className="rounded-full object-cover flex-shrink-0"
+                  />
                 ) : (
                   <div className="w-6 h-6 rounded-full bg-brand-100 dark:bg-brand-900 flex items-center justify-center flex-shrink-0">
                     <span className="text-[10px] font-bold text-brand-700 dark:text-brand-300">

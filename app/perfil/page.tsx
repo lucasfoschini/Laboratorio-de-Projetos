@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import NextImage from "next/image";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, User, Mail, Building2, GraduationCap, Loader2, ImageIcon } from "lucide-react";
 import Link from "next/link";
@@ -116,7 +117,7 @@ export default function PerfilPage() {
         {/* Avatar + Role */}
         <div className="flex items-center gap-4 mb-8 p-5 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
           {avatarUrl ? (
-            <img src={avatarUrl} alt={user.name} className="w-16 h-16 rounded-full object-cover shrink-0" />
+            <NextImage src={avatarUrl} alt={user.name} width={64} height={64} className="rounded-full object-cover shrink-0" loading="lazy" />
           ) : (
             <div className="w-16 h-16 rounded-full bg-brand-100 dark:bg-brand-900 flex items-center justify-center shrink-0">
               <span className="text-xl font-bold text-brand-700 dark:text-brand-300">{initials}</span>

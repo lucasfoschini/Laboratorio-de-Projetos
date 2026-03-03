@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { BookOpen, Plus, Search, X, AlertCircle, ChevronDown, UserPlus } from "lucide-react";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 import { Input, Button, EmptyState, Skeleton } from "@/components/ui";
 import { PublicationCard } from "@/components/ui/PublicationCard";
 import { TYPE_LABELS } from "@/lib/utils";
@@ -184,6 +185,7 @@ export default function PublicacoesPage() {
   const { isAuthenticated, user } = useAuth();
 
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 400);
   const [type,   setType]   = useState<PublicationType | "all">("all");
   const [year,   setYear]   = useState("all");
   const [showForm, setShowForm]     = useState(false);
@@ -208,8 +210,8 @@ export default function PublicacoesPage() {
 
   const filtered = useMemo(() => {
     let result = [...publications];
-    if (search.trim()) {
-      const q = search.toLowerCase();
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase();
       result = result.filter(p =>
         p.title.toLowerCase().includes(q) ||
         p.abstract.toLowerCase().includes(q) ||
@@ -468,7 +470,7 @@ export default function PublicacoesPage() {
       <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-4 mb-6 shadow-card">
         <div className="flex gap-3 flex-wrap items-center">
           <div className="flex-1 min-w-48">
-            <Input placeholder="Buscar por título, autor ou palavra-chave..." value={search} onChange={e => setSearch(e.target.value)} leftIcon={<Search size={15} />} />
+            <Input placeholder="Buscar por título, autor ou palavra-chave..." value={search} onChange={e => setSearch(e.target.value)} leftIcon={<Search size={15} />} /> {/* mantém search instantâneo para UX */}
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
             {TYPE_OPTIONS.map(opt => (

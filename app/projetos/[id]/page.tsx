@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import NextImage from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -170,7 +171,14 @@ export default function ProjectDetailPage() {
           {/* Header do projeto */}
           <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-6 shadow-card">
             {project.coverImage && (
-              <img src={project.coverImage} alt={project.title} className="w-full h-48 object-cover rounded-xl mb-5" />
+              <NextImage
+                src={project.coverImage}
+                alt={project.title}
+                width={800}
+                height={400}
+                className="w-full h-48 object-cover rounded-xl mb-5"
+                loading="lazy"
+              />
             )}
             <div className="flex flex-wrap items-center gap-2 mb-3">
               {(project.areas?.length ? project.areas.map((a: string) => a.toLowerCase()) : [project.area]).map((a: string) => (
@@ -296,7 +304,15 @@ export default function ProjectDetailPage() {
                           {post.media.map((m: any) => {
                             const MIcon = MEDIA_ICON[m.type] ?? FileText;
                             if (m.type === "IMAGE") return (
-                              <img key={m.id} src={m.url} alt={m.title ?? ""} className="w-full rounded-xl object-cover max-h-64" />
+                              <NextImage
+                                key={m.id}
+                                src={m.url}
+                                alt={m.title ?? ""}
+                                width={800}
+                                height={400}
+                                className="w-full rounded-xl object-cover max-h-64"
+                                loading="lazy"
+                              />
                             );
                             return (
                               <a key={m.id} href={m.url} target="_blank" rel="noopener noreferrer"
@@ -481,7 +497,7 @@ export default function ProjectDetailPage() {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900 flex items-center justify-center flex-shrink-0">
                   {project.owner.avatar ? (
-                    <img src={project.owner.avatar} alt={project.owner.name} className="w-10 h-10 rounded-full object-cover" />
+                    <NextImage src={project.owner.avatar} alt={project.owner.name} width={40} height={40} className="rounded-full object-cover" loading="lazy" />
                   ) : (
                     <span className="text-sm font-bold text-brand-700 dark:text-brand-300">
                       {project.owner.name?.split(" ").slice(0,2).map((n: string) => n[0]).join("").toUpperCase()}

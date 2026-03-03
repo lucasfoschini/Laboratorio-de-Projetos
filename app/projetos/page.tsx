@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Search, SlidersHorizontal, FlaskConical } from "lucide-react";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 import { Input, Badge, Button, EmptyState, Skeleton } from "@/components/ui";
 import { ProjectCard } from "@/components/ui/ProjectCard";
 import { AREA_LABELS } from "@/lib/utils";
@@ -29,6 +30,7 @@ const SORT_OPTIONS = [
 
 export default function ProjetosPage() {
   const [search,      setSearch]      = useState("");
+  const debouncedSearch = useDebounce(search, 400);
   const [status,      setStatus]      = useState<ProjectStatus | "all">("all");
   const [area,        setArea]        = useState<ProjectArea | "all">("all");
   const [sort,        setSort]        = useState("newest");
@@ -39,8 +41,8 @@ export default function ProjetosPage() {
   const filtered = useMemo(() => {
     let result = [...projects];
 
-    if (search.trim()) {
-      const q = search.toLowerCase();
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase();
       result = result.filter(
         (p) => p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q) || p.tags?.some((t: string) => t.includes(q)),
       );
@@ -81,6 +83,7 @@ export default function ProjetosPage() {
               placeholder="Buscar por título, área ou tag..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+          // search input still updates immediately for UI responsiveness
               leftIcon={<Search size={15} />}
             />
           </div>

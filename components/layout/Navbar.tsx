@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import { Bell, BellDot, FlaskConical, LayoutDashboard, LogIn, LogOut, Menu, MessageSquare, Moon, Settings, Sun, UserCircle, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -180,7 +181,7 @@ function NotificationBell() {
                           className="flex items-start gap-3 flex-1 min-w-0"
                         >
                           {req.user?.avatar ? (
-                            <img src={req.user.avatar} alt={req.user.name ?? ""} className="w-7 h-7 rounded-full object-cover flex-shrink-0 mt-0.5" />
+                            <NextImage src={req.user.avatar} alt={req.user.name ?? ""} width={28} height={28} className="rounded-full object-cover flex-shrink-0 mt-0.5" loading="lazy" />
                           ) : (
                             <div className="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                               <span className="text-[11px] font-bold text-brand-700">
@@ -381,7 +382,7 @@ export function Navbar() {
                 <div className="w-px h-5 bg-neutral-200 dark:bg-neutral-700" />
                 <Link href="/dashboard" className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all">
                   {user?.avatar ? (
-                    <img src={user.avatar} alt={user.name ?? ""} className="w-7 h-7 rounded-full object-cover" />
+                    <NextImage src={user.avatar} alt={user.name ?? ""} width={28} height={28} className="rounded-full object-cover" loading="lazy" />
                   ) : (
                     <div className="w-7 h-7 rounded-full bg-brand-100 dark:bg-brand-900 flex items-center justify-center">
                       <span className="text-[11px] font-bold text-brand-700 dark:text-brand-300">{initials}</span>
@@ -443,7 +444,7 @@ export function Navbar() {
               <>
                 <div className="flex items-center gap-3 px-4 py-2.5">
                   {user?.avatar ? (
-                    <img src={user.avatar} alt={user?.name ?? ""} className="w-8 h-8 rounded-full object-cover" />
+                    <NextImage src={user.avatar} alt={user?.name ?? ""} width={32} height={32} className="rounded-full object-cover" loading="lazy" />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center">
                       <span className="text-xs font-bold text-brand-700">{initials}</span>

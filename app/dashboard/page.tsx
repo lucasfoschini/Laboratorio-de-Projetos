@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import NextImage from "next/image";
 import {
   ArrowRight, Bell, BookmarkCheck, CheckCircle2, Clock,
   FlaskConical, LayoutDashboard, Loader2, PlusCircle,
@@ -70,7 +71,7 @@ export default function DashboardPage() {
       <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-5 mb-6 shadow-card flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4">
           {user.avatar ? (
-            <img src={user.avatar} alt={user.name} className="w-14 h-14 rounded-2xl object-cover flex-shrink-0" />
+            <NextImage src={user.avatar} alt={user.name} width={56} height={56} className="rounded-2xl object-cover flex-shrink-0" loading="lazy" />
           ) : (
             <div className="w-14 h-14 rounded-2xl bg-brand-100 dark:bg-brand-900 flex items-center justify-center flex-shrink-0">
               <span className="font-display font-extrabold text-brand-700 dark:text-brand-300 text-lg">{initials}</span>

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes } from "react";
 
@@ -214,7 +215,16 @@ export function Skeleton({ className }: { className?: string }) {
 export function Avatar({ name, size = "md", src }: { name: string; size?: "sm" | "md" | "lg"; src?: string }) {
   const initials = name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
   const sizes = { sm: "w-6 h-6 text-[10px]", md: "w-8 h-8 text-xs", lg: "w-10 h-10 text-sm" };
-  if (src) return <img src={src} alt={name} className={cn("rounded-full object-cover", sizes[size])} />;
+  if (src) return (
+    <Image
+      src={src}
+      alt={name}
+      width={size === "sm" ? 24 : size === "lg" ? 40 : 32}
+      height={size === "sm" ? 24 : size === "lg" ? 40 : 32}
+      className={cn("rounded-full object-cover", sizes[size])}
+      loading="lazy"
+    />
+  );
   return (
     <div className={cn("rounded-full bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 font-bold flex items-center justify-center flex-shrink-0", sizes[size])}>
       {initials}
