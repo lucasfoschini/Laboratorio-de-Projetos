@@ -59,6 +59,7 @@ export const authApi = {
   register:       (d: unknown) => api.post("/auth/register", d),
   refresh:        (d: unknown) => api.post("/auth/refresh",  d),
   me:             ()           => api.get("/auth/me"),
+  updateMe:       (d: unknown) => api.patch("/auth/me", d), // ← novo
   forgotPassword: (d: unknown) => api.post("/auth/forgot-password", d),
   resetPassword:  (d: unknown) => api.post("/auth/reset-password",  d),
 };

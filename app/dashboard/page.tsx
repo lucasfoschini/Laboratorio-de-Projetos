@@ -7,7 +7,7 @@ import NextImage from "next/image";
 import {
   ArrowRight, Bell, BookmarkCheck, CheckCircle2, Clock,
   FlaskConical, LayoutDashboard, Loader2, PlusCircle,
-  Trash2, Users, XCircle,
+  Trash2, Users, XCircle, Pencil, X, Check,
 } from "lucide-react";
 import { Badge, Avatar, Button, Skeleton } from "@/components/ui";
 import { ProjectCard } from "@/components/ui/ProjectCard";
@@ -29,8 +29,15 @@ const REQ_STATUS: Record<string, { label: string; variant: "success"|"warning"|"
 
 export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>("overview");
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, updateProfile } = useAuth();
   const router = useRouter();
+
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError,   setProfileError]   = useState("");
+  const [profileForm, setProfileForm] = useState({
+    name: "", department: "", institution: "", avatar: "", bio: "", linkedin: "",
+  });
 
   const { data: stats }         = useDashboardStats();
   const { data: myProjects = [] } = useDashboardProjects();
@@ -46,6 +53,17 @@ export default function DashboardPage() {
     if (!authLoading && !isAuthenticated) router.push("/auth/login");
   }, [authLoading, isAuthenticated, router]);
 
+  useEffect(() => {
+    if (user) setProfileForm({
+      name:        user.name                   ?? "",
+      department:  (user as any).department    ?? "",
+      institution: (user as any).institution   ?? "",
+      avatar:      (user as any).avatar        ?? "",
+      bio:         (user as any).bio           ?? "",
+      linkedin:    (user as any).linkedin      ?? "",
+    });
+  }, [user]);
+
   if (authLoading || !user) return (
     <div className="max-w-7xl mx-auto px-4 py-20 flex justify-center">
       <Loader2 size={32} className="animate-spin text-brand-500" />
@@ -53,6 +71,26 @@ export default function DashboardPage() {
   );
 
   const initials = user.name.split(" ").slice(0, 2).map((n: string) => n[0]).join("").toUpperCase();
+
+  const handleSaveProfile = async () => {
+    try {
+      setProfileError("");
+      setProfileLoading(true);
+      await updateProfile({
+        name:        profileForm.name        || undefined,
+        department:  profileForm.department  || undefined,
+        institution: profileForm.institution || undefined,
+        avatar:      profileForm.avatar      || undefined,
+        bio:         profileForm.bio         || undefined,
+        linkedin:    profileForm.linkedin    || undefined,
+      });
+      setEditingProfile(false);
+    } catch (err: any) {
+      setProfileError(err?.response?.data?.message ?? "Erro ao salvar perfil.");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
   const ownedProjects = myProjects.filter((p: any) => p.isOwner);
   const memberProjects = myProjects.filter((p: any) => !p.isOwner);
   const pendingCount = pendingReqs.length;
@@ -68,32 +106,115 @@ export default function DashboardPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
       {/* ── Profile ── */}
-      <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-5 mb-6 shadow-card flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-4">
-          {user.avatar ? (
-            <NextImage src={user.avatar} alt={user.name} width={56} height={56} className="rounded-2xl object-cover flex-shrink-0" loading="lazy" />
-          ) : (
-            <div className="w-14 h-14 rounded-2xl bg-brand-100 dark:bg-brand-900 flex items-center justify-center flex-shrink-0">
-              <span className="font-display font-extrabold text-brand-700 dark:text-brand-300 text-lg">{initials}</span>
+      <div className="bg-white border border-neutral-200 rounded-2xl p-5 mb-6 shadow-card">
+        {!editingProfile ? (
+          /* MODO VISUALIZAÇÃO */
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl overflow-hidden bg-brand-100 flex items-center justify-center flex-shrink-0">
+                {(user as any).avatar ? (
+                  <NextImage src={(user as any).avatar} alt={user.name} width={56} height={56} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="font-display font-extrabold text-brand-700 text-lg">{initials}</span>
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="font-display font-bold text-neutral-900 text-lg">{user.name}</h2>
+                  <Badge variant={user.role === "professor" ? "brand" : "neutral"}>
+                    {user.role === "professor" ? "Professor" : "Aluno"}
+                  </Badge>
+                </div>
+                <p className="text-sm text-neutral-500 mt-0.5">
+                  {[(user as any).department, (user as any).institution].filter(Boolean).join(" · ") || user.email}
+                </p>
+              </div>
             </div>
-          )}
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-lg">{user.name}</h2>
-              <Badge variant={user.role === "professor" ? "brand" : "neutral"}>
-                {user.role === "professor" ? "Professor" : "Aluno"}
-              </Badge>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="secondary" onClick={() => setEditingProfile(true)}>
+                <Pencil size={13} /> Editar perfil
+              </Button>
+              <Link href="/projetos/novo">
+                <Button size="sm"><PlusCircle size={14} /> Criar projeto</Button>
+              </Link>
             </div>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
-              {[user.department, user.institution].filter(Boolean).join(" · ") || user.email}
-            </p>
           </div>
-        </div>
-        <Link href="/projetos/novo">
-          <Button size="sm"><PlusCircle size={14} /> Criar projeto</Button>
-        </Link>
-      </div>
+        ) : (
+          /* MODO EDIÇÃO */
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display font-bold text-neutral-800">Editar perfil</h3>
+              <button onClick={() => { setEditingProfile(false); setProfileError(""); }}
+                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-all">
+                <X size={15} />
+              </button>
+            </div>
 
+            {/* Preview do avatar */}
+            <div className="flex items-center gap-4 mb-4 p-3 bg-neutral-50 rounded-xl border border-neutral-200">
+              <div className="w-12 h-12 rounded-xl overflow-hidden bg-brand-100 flex items-center justify-center flex-shrink-0">
+                {profileForm.avatar ? (
+                  <img src={profileForm.avatar} alt="preview" className="w-full h-full object-cover"
+                    onError={(e) => (e.currentTarget.style.display = "none")} />
+                ) : (
+                  <span className="font-bold text-brand-700 text-sm">{initials}</span>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-neutral-600 mb-1">URL da foto de perfil</p>
+                <input
+                  className="w-full h-9 rounded-xl border border-neutral-300 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                  value={profileForm.avatar}
+                  onChange={e => setProfileForm(f => ({ ...f, avatar: e.target.value }))}
+                  placeholder="https://exemplo.com/sua-foto.jpg"
+                />
+                <p className="text-[10px] text-neutral-400 mt-1">
+                  Cole a URL de uma imagem. Sugestão: use seu avatar do GitHub (https://github.com/seuusuario.png).
+                </p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-3">
+              {[
+                { label: "Nome completo",  key: "name",        placeholder: "Seu nome" },
+                { label: "Departamento",   key: "department",  placeholder: "Ex: Engenharia de Computação" },
+                { label: "Instituição",    key: "institution", placeholder: "Ex: UNICAMP" },
+                { label: "LinkedIn (URL)", key: "linkedin",    placeholder: "https://linkedin.com/in/..." },
+              ].map(({ label, key, placeholder }) => (
+                <div key={key}>
+                  <label className="text-xs font-medium text-neutral-600 mb-1 block">{label}</label>
+                  <input
+                    className="w-full h-9 rounded-xl border border-neutral-300 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                    value={(profileForm as any)[key]}
+                    onChange={e => setProfileForm(f => ({ ...f, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                  />
+                </div>
+              ))}
+              <div className="md:col-span-2">
+                <label className="text-xs font-medium text-neutral-600 mb-1 block">Bio</label>
+                <textarea rows={2}
+                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm resize-none outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                  value={profileForm.bio}
+                  onChange={e => setProfileForm(f => ({ ...f, bio: e.target.value }))}
+                  placeholder="Uma breve descrição sobre você..."
+                />
+              </div>
+            </div>
+
+            {profileError && <p className="text-xs text-danger-500 mt-3">{profileError}</p>}
+
+            <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-neutral-100">
+              <Button variant="secondary" size="sm" onClick={() => { setEditingProfile(false); setProfileError(""); }}>
+                Cancelar
+              </Button>
+              <Button size="sm" loading={profileLoading} onClick={handleSaveProfile}>
+                <Check size={13} /> Salvar perfil
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
       {/* ── Stats ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
