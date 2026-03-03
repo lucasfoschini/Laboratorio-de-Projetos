@@ -1,92 +1,166 @@
-# LabEx — Laboratório de Projetos de Extensão
+# 🔬 Laboratório Ativo — Frontend
 
-Plataforma acadêmica para gestão de projetos de extensão universitária.
+Interface web da plataforma **Laboratório Ativo**, uma plataforma acadêmica para gestão, descoberta e acompanhamento de projetos de extensão universitária.
 
-## Stack
+**Stack:** Next.js 14 · TypeScript · Tailwind CSS · TanStack Query v5 · Axios · React Hook Form · Zod
 
-| Camada       | Tecnologia                          |
-|-------------|--------------------------------------|
-| Framework   | Next.js 14+ (App Router)             |
-| Linguagem   | TypeScript                           |
-| Estilos     | Tailwind CSS (paleta institucional)  |
-| Data fetch  | TanStack Query v5                    |
-| HTTP client | Axios + Interceptors JWT             |
-| Formulários | React Hook Form + Zod                |
-| Fontes      | Syne (display) + DM Sans (body)      |
+---
 
-## Estrutura de pastas
+## 🔗 Repositórios do Projeto
 
-```
-labex/
-├── app/
-│   ├── layout.tsx              # Root layout com providers e Navbar
-│   ├── globals.css
-│   ├── page.tsx                # Home — hero, stats, projetos em destaque
-│   ├── projetos/
-│   │   └── page.tsx            # Listagem com filtros (status, área, busca)
-│   ├── publicacoes/
-│   │   └── page.tsx            # Listagem com filtros por tipo e ano
-│   ├── dashboard/
-│   │   └── page.tsx            # Dashboard do usuário (abas)
-│   └── auth/
-│       └── login/page.tsx      # Login com RHF + Zod
-│
-├── components/
-│   ├── layout/
-│   │   └── Navbar.tsx          # Navbar responsiva
-│   ├── providers/
-│   │   └── QueryProvider.tsx   # TanStack Query setup
-│   └── ui/
-│       ├── index.tsx           # Badge, Button, Input, Card, Avatar, etc.
-│       ├── ProjectCard.tsx     # Card de projeto (default + compact)
-│       └── PublicationCard.tsx # Card de publicação
-│
-├── lib/
-│   ├── api/
-│   │   └── axios.ts            # Instância Axios + interceptors JWT + refresh
-│   ├── hooks/
-│   │   └── useQueries.ts       # Todos os hooks TanStack Query
-│   ├── schemas.ts              # Schemas Zod (login, register, project, apply)
-│   └── utils.ts                # cn(), mock data, label maps
-│
-├── types/
-│   └── index.ts                # Todos os tipos TypeScript
-│
-├── tailwind.config.ts          # Paleta brand + fontes + sombras customizadas
-├── next.config.js
-└── tsconfig.json
-```
+| Repositório | Descrição | Deploy |
+|---|---|---|
+| [Laboratorio-de-Projetos](https://github.com/lucasfoschini/Laboratorio-de-Projetos) | Este repositório — Frontend Next.js | [Vercel](https://lexatec.vercel.app) |
+| [API-Laboratorio-de-Projetos-de-Extensao](https://github.com/lucasfoschini/API-Laboratorio-de-Projetos-de-Extensao) | Backend REST API | [Render](https://render.com) |
 
-## Início rápido
+---
+
+## 🚀 Início Rápido
 
 ```bash
-npm install
-npm run dev
-# Acesse http://localhost:3000
+cp .env.example .env.local   # configurar variável de ambiente
+npm install                  # instalar dependências
+npm run dev                  # iniciar (http://localhost:3000)
 ```
 
-## Variável de ambiente
+---
+
+## ⚙️ Variável de Ambiente
 
 ```env
-NEXT_PUBLIC_API_URL=https://api.labex.edu.br
+NEXT_PUBLIC_API_URL=https://sua-api.onrender.com
 ```
 
-## Páginas
+Para desenvolvimento local com a API rodando na porta 3334:
 
-| Rota              | Descrição                                              |
-|-------------------|--------------------------------------------------------|
-| `/`               | Home com hero, stats e projetos em destaque            |
-| `/projetos`       | Listagem com filtros de status, área e busca           |
-| `/publicacoes`    | Publicações com filtro por tipo, ano e busca           |
-| `/dashboard`      | Dashboard do usuário com abas (overview, projetos...) |
-| `/auth/login`     | Login com validação Zod                                |
-| `/auth/register`  | Cadastro com validação Zod                             |
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3334
+```
 
-## Autenticação
+---
 
-O Axios (`lib/api/axios.ts`) injeta automaticamente o JWT em cada request e faz
-refresh do token ao receber 401, usando a fila de requisições pendentes.
+## 📄 Páginas
 
-Os tokens são salvos em `localStorage` com as chaves:
-- `@labex:access_token`
-- `@labex:refresh_token`
+| Rota | Descrição | Auth |
+|---|---|---|
+| `/` | Home com hero, acesso rápido e projetos em destaque | Pública |
+| `/projetos` | Listagem com filtros de status, área e busca | Pública |
+| `/projetos/:id` | Detalhes do projeto, posts, membros e sidebar de ações | Pública |
+| `/projetos/novo` | Criar novo projeto com busca de membros iniciais | ✅ |
+| `/projetos/:id/editar` | Editar projeto (somente o criador) | ✅ |
+| `/publicacoes` | Publicações com formulário dinâmico por tipo | Pública |
+| `/dashboard` | Dashboard com abas: visão geral, projetos, solicitações, acompanhando | ✅ |
+| `/auth/login` | Login | Pública |
+| `/auth/register` | Cadastro | Pública |
+
+---
+
+## 🧩 Funcionalidades
+
+### Projetos
+- Listagem com filtros por status, área temática e busca por texto
+- Detalhes com posts/atualizações, membros, vagas, dados técnicos (duração, custo, escopo, categoria) e informações do criador
+- Indicador de vagas: "X vagas abertas" ou "Vagas esgotadas" com barra de progresso
+- Botão "Entrar no grupo" desaparece automaticamente quando as vagas estão cheias
+- Criação com busca em tempo real de membros iniciais (debounce 400ms)
+- Edição completa incluindo status manual pelo criador
+
+### Publicações
+- Formulário dinâmico que muda os campos conforme o tipo selecionado:
+  - **Artigo** — título, resumo, autores, projeto, revista, DOI, Zenodo, tags
+  - **Relatório Técnico** — tipo (parcial/final/técnico), versão, número, orientador
+  - **Apresentação** — evento, data, tipo (oral/pôster/demo), local, carga horária, certificado
+  - **TCC / Monografia** — orientador, curso, banca, coorientador, nota, GitHub
+- Dropdown de projetos exibe apenas os projetos do próprio usuário
+- Aberto para alunos e professores
+
+### Dashboard
+- Visão geral com contadores de projetos, solicitações e inscrições
+- Gerenciamento de projetos criados e participados
+- Aprovação/rejeição de solicitações de entrada
+- Lista de projetos acompanhados
+
+### Notificações (sino na navbar)
+- **Solicitações pendentes** nos seus projetos
+- **Atividade recente** (posts e publicações das últimas 48h) dos projetos que você acompanha
+- Badge com contagem total, ícone muda quando há notificações novas
+
+### Acesso rápido (home)
+- Cards condicionais: usuário não logado vê "Cadastre-se"; logado vê "Criar projeto"
+
+---
+
+## 📁 Estrutura de Pastas
+
+```
+app/
+├── page.tsx                        # Home
+├── layout.tsx                      # Root layout com Navbar e providers
+├── projetos/
+│   ├── page.tsx                    # Listagem de projetos
+│   ├── novo/page.tsx               # Criar projeto
+│   └── [id]/
+│       ├── page.tsx                # Detalhes do projeto
+│       └── editar/page.tsx         # Editar projeto
+├── publicacoes/
+│   └── page.tsx                    # Publicações com formulário dinâmico
+├── dashboard/
+│   └── page.tsx                    # Dashboard do usuário
+└── auth/
+    ├── login/page.tsx
+    └── register/page.tsx
+
+components/
+├── layout/
+│   └── Navbar.tsx                  # Navbar responsiva com sino de notificações
+├── sections/
+│   ├── HeroBanner.tsx              # Banner condicional (logado/deslogado)
+│   ├── QuickAccess.tsx             # Acesso rápido condicional por auth
+│   └── ProjectsPreview.tsx         # Preview de projetos na home
+└── ui/
+    ├── index.tsx                   # Badge, Button, Input, Avatar, Skeleton...
+    ├── ProjectCard.tsx             # Card de projeto (default + compact)
+    └── PublicationCard.tsx         # Card de publicação
+
+lib/
+├── api/
+│   └── axios.ts                    # Instância Axios + interceptors JWT + refresh automático
+├── hooks/
+│   └── useQueries.ts               # Todos os hooks TanStack Query
+├── schemas.ts                      # Schemas Zod de validação de formulários
+└── utils.ts                        # cn(), label maps (AREA_LABELS, STATUS_LABELS...)
+
+contexts/
+└── auth.tsx                        # Contexto de autenticação global
+
+types/
+└── index.ts                        # Todos os tipos TypeScript
+```
+
+---
+
+## 🔐 Autenticação
+
+O Axios (`lib/api/axios.ts`) gerencia os tokens automaticamente:
+
+- Injeta `Authorization: Bearer <token>` em todas as requisições autenticadas
+- Ao receber `401`, tenta renovar o access token via `/auth/refresh` automaticamente
+- Requisições pendentes durante o refresh são enfileiradas e re-executadas após renovação
+- Tokens armazenados em `localStorage` com as chaves `@labex:access_token` e `@labex:refresh_token`
+
+---
+
+## 🎨 Design System
+
+- **Paleta:** cores institucionais `brand` (azul), com variantes para status (`success`, `warning`, `danger`, `neutral`)
+- **Tipografia:** Syne (display/títulos) + DM Sans (corpo)
+- **Sombras customizadas:** `shadow-card`, `shadow-card-md`
+- Configurado em `tailwind.config.ts`
+
+---
+
+## 🤝 Contribuindo
+
+1. Crie uma branch: `git checkout -b feat/nome-da-feature`
+2. Faça as alterações e commit: `git commit -m "feat: descrição"`
+3. Abra um Pull Request para `main`
