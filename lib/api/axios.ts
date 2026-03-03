@@ -100,6 +100,7 @@ export const publicationsApi = {
 };
 
 export const dashboardApi = {
+  overview:           () => api.get("/dashboard/overview"), // ← novo
   stats:              () => api.get("/dashboard/stats"),
   myProjects:         () => api.get("/dashboard/projects"),
   myRequests:         () => api.get("/dashboard/requests/mine"),
