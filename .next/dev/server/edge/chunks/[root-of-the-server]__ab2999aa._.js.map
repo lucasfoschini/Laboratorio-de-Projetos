@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 16, "column": 0}, "map": {"version":3,"sources":["turbopack:///[project]/Downloads/labex-front/middleware.ts"],"sourcesContent":["import { NextResponse } from \"next/server\";\nimport type { NextRequest } from \"next/server\";\n\nconst PROTECTED = [\"/dashboard\", \"/projetos/novo\", \"/perfil\"];\n\nexport function middleware(request: NextRequest) {\n  const { pathname } = request.nextUrl;\n  const isProtected  = PROTECTED.some((r) => pathname.startsWith(r));\n\n  if (!isProtected) return NextResponse.next();\n\n  // Verifica presença do token via cookie (opcional) ou deixa o client redirecionar\n  // O redirect real é feito no useEffect de cada página protegida\n  return NextResponse.next();\n}\n\nexport const config = {\n  matcher: [\"/dashboard/:path*\", \"/projetos/novo\"],\n};\n"],"names":[],"mappings":";;;;;;AAAA;AAAA;;AAGA,MAAM,YAAY;IAAC;IAAc;IAAkB;CAAU;AAEtD,SAAS,WAAW,OAAoB;IAC7C,MAAM,EAAE,QAAQ,EAAE,GAAG,QAAQ,OAAO;IACpC,MAAM,cAAe,UAAU,IAAI,CAAC,CAAC,IAAM,SAAS,UAAU,CAAC;IAE/D,IAAI,CAAC,aAAa,OAAO,+NAAY,CAAC,IAAI;IAE1C,kFAAkF;IAClF,gEAAgE;IAChE,OAAO,+NAAY,CAAC,IAAI;AAC1B;AAEO,MAAM,SAAS;IACpB,SAAS;QAAC;QAAqB;KAAiB;AAClD"}}]
+}
