@@ -16,15 +16,15 @@ const NAV = [
   { href: "/publicacoes", label: "Publicações" },
 ];
 
-const NOTIF_SEEN_KEY = "@labativo:notif_seen_at";
+const NOTIF_SEEN_IDS_KEY = "@labativo:notif_seen_ids";
 const NOTIF_DISMISSED_KEY = "@labativo:notif_dismissed_ids";
 
-function getSeenAt(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(NOTIF_SEEN_KEY);
+function getSeenNotifIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(NOTIF_SEEN_IDS_KEY) ?? "[]"); } catch { return []; }
 }
-function setSeenAt(iso: string) {
-  if (typeof window !== "undefined") localStorage.setItem(NOTIF_SEEN_KEY, iso);
+function saveSeenNotifIds(ids: string[]) {
+  if (typeof window !== "undefined") localStorage.setItem(NOTIF_SEEN_IDS_KEY, JSON.stringify(ids.slice(-300)));
 }
 function getDismissedIds(): string[] {
   if (typeof window === "undefined") return [];
@@ -38,7 +38,7 @@ function addDismissedId(id: string) {
 function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
-  const [seenAt, _setSeenAt] = useState<string | null>(null);
+  const [seenIds, _setSeenIds] = useState<string[]>([]);
   const ref = useRef<HTMLDivElement>(null);
   const { data: pending = [] } = useDashboardPendingRequests();
   const { data: activity } = useSubscribedActivity(true);
@@ -47,7 +47,7 @@ function NotificationBell() {
 
   // Carrega estado persistido no mount
   useEffect(() => {
-    _setSeenAt(getSeenAt());
+    _setSeenIds(getSeenNotifIds());
     setDismissedIds(getDismissedIds());
   }, []);
 
@@ -95,19 +95,22 @@ function NotificationBell() {
     return arr.filter((n: any) => !dismissedIds.includes(n.id) && !n.read);
   }, [systemNotifs, dismissedIds]);
 
-  // Conta apenas notificações NOVAS (após o último "seen") para o badge
+  // IDs de todas as notificações visíveis (prefixados para evitar colisão entre tipos)
+  const allVisibleIds = useMemo(() => [
+    ...visiblePending.map((r: any) => `req:${r.id}`),
+    ...visiblePosts.map((p: any) => `post:${p.id}`),
+    ...visiblePubs.map((p: any) => `pub:${p.id}`),
+    ...visibleSystemNotifs.map((n: any) => `notif:${n.id}`),
+  ], [visiblePending, visiblePosts, visiblePubs, visibleSystemNotifs]);
+
+  // Conta notificações cujos IDs ainda não foram "vistos" pelo usuário
   const unseenCount = useMemo(() => {
-    if (!seenAt) return visiblePending.length + visiblePosts.length + visiblePubs.length + visibleSystemNotifs.length;
-    const threshold = new Date(seenAt);
-    const newPending = visiblePending.filter((r: any) => r.createdAt && new Date(r.createdAt) > threshold);
-    const newPosts   = visiblePosts.filter((p: any) => p.createdAt && new Date(p.createdAt) > threshold);
-    const newPubs    = visiblePubs.filter((p: any) => p.createdAt && new Date(p.createdAt) > threshold);
-    const newSystem  = visibleSystemNotifs.filter((n: any) => n.createdAt && new Date(n.createdAt) > threshold);
-    return newPending.length + newPosts.length + newPubs.length + newSystem.length;
-  }, [seenAt, visiblePending, visiblePosts, visiblePubs, visibleSystemNotifs]);
+    const seen = new Set(seenIds);
+    return allVisibleIds.filter(id => !seen.has(id)).length;
+  }, [allVisibleIds, seenIds]);
 
   const totalVisible = visiblePending.length + visiblePosts.length + visiblePubs.length + visibleSystemNotifs.length;
-  const showBadge    = unseenCount > 0;
+  const showBadge    = unseenCount > 0 && !open;
 
   // Fecha ao clicar fora
   useEffect(() => {
@@ -122,10 +125,10 @@ function NotificationBell() {
     const willOpen = !open;
     setOpen(willOpen);
     if (willOpen) {
-      // Marca tudo como "visto" — badge zera e persiste
-      const now = new Date().toISOString();
-      setSeenAt(now);
-      _setSeenAt(now);
+      // Marca todos os IDs atuais como "vistos" — badge zera e persiste
+      const merged = [...new Set([...seenIds, ...allVisibleIds])].slice(-300);
+      _setSeenIds(merged);
+      saveSeenNotifIds(merged);
     }
   };
 

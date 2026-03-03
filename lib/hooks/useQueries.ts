@@ -75,6 +75,10 @@ export function useCreatePost() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: ({ projectId, data }: { projectId: string; data: unknown }) => projectsApi.createPost(projectId, data), onSuccess: (_, { projectId }) => { qc.invalidateQueries({ queryKey: ["posts", projectId] }); qc.invalidateQueries({ queryKey: ["project", projectId] }); } });
 }
+export function useUpdatePost() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: ({ id, data }: { id: string; data: unknown }) => postsApi.update(id, data), onSuccess: () => qc.invalidateQueries({ queryKey: ["posts"] }) });
+}
 export function useDeletePost() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (id: string) => postsApi.delete(id), onSuccess: () => qc.invalidateQueries({ queryKey: ["posts"] }) });

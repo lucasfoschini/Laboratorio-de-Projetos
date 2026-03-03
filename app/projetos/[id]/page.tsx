@@ -9,14 +9,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArrowLeft, Bell, BellOff, BookOpen, Calendar, CheckCircle2,
   ExternalLink, FileText, Image, LogOut, Mail, MessageCircle, Pencil, Phone,
-  Play, Send, Users, AlertCircle, Clock, Plus, Trash2, Loader2, UserMinus,
+  Play, Send, Users, AlertCircle, Clock, Plus, Trash2, Loader2, UserMinus, X,
 } from "lucide-react";
 import { Badge, Avatar, Button, Skeleton } from "@/components/ui";
 import { cn, AREA_LABELS, STATUS_LABELS } from "@/lib/utils";
 import { z } from "zod";
 import {
   useProject, useSubscriptionStatus, useSubscribe,
-  useJoinRequest, useProjectPosts, useCreatePost, useDeletePost,
+  useJoinRequest, useProjectPosts, useCreatePost, useUpdatePost, useDeletePost,
   useLeaveProject, useRemoveMember,
 } from "@/lib/hooks/useQueries";
 import { memberRequestsApi } from "@/lib/api/axios";
@@ -26,13 +26,11 @@ const joinSchema   = z.object({ message: z.string().min(30, "Descreva sua motiva
 const postSchema   = z.object({
   title:   z.string().min(5, "Título muito curto").max(100),
   content: z.string().min(20, "Conteúdo muito curto"),
-  mediaUrl:   z.string().url("URL inválida").optional().or(z.literal("")),
-  mediaType:  z.enum(["IMAGE","VIDEO","ARTICLE_LINK","DOCUMENT"]).optional(),
-  mediaTitle: z.string().optional(),
 });
 
 type JoinForm = z.infer<typeof joinSchema>;
 type PostForm = z.infer<typeof postSchema>;
+type MediaItem = { type: string; url: string; title: string };
 
 const STATUS_VARIANT: Record<string, "success"|"brand"|"neutral"|"warning"> = {
   open: "success", in_progress: "brand", completed: "neutral",
@@ -56,6 +54,9 @@ export default function ProjectDetailPage() {
   const [postError,     setPostError]     = useState("");
   const [joinDone,      setJoinDone]      = useState(false);
   const [postPage,      setPostPage]      = useState(1);
+  const [postMedia,     setPostMedia]     = useState<MediaItem[]>([]);
+  const [editingPost,   setEditingPost]   = useState<string | null>(null);
+  const [editMedia,     setEditMedia]     = useState<MediaItem[]>([]);
 
   const { data: project, isLoading } = useProject(id);
   const { data: subStatus }          = useSubscriptionStatus(id, isAuthenticated);
@@ -64,6 +65,7 @@ export default function ProjectDetailPage() {
   const subscribeMut   = useSubscribe();
   const joinMut        = useJoinRequest();
   const createPostMut  = useCreatePost();
+  const updatePostMut  = useUpdatePost();
   const deletePostMut  = useDeletePost();
   const leaveMut       = useLeaveProject();
   const removeMemberMut = useRemoveMember();
@@ -138,13 +140,36 @@ export default function ProjectDetailPage() {
   const handlePost = async (data: PostForm) => {
     try {
       setPostError("");
-      const media = data.mediaUrl ? [{ type: data.mediaType ?? "ARTICLE_LINK", url: data.mediaUrl, title: data.mediaTitle || undefined }] : undefined;
-      await createPostMut.mutateAsync({ projectId: id, data: { title: data.title, content: data.content, media } });
+      const media = postMedia.filter(m => m.url.trim()).map(m => ({ type: m.type || "ARTICLE_LINK", url: m.url, title: m.title || undefined }));
+      await createPostMut.mutateAsync({ projectId: id, data: { title: data.title, content: data.content, media: media.length > 0 ? media : undefined } });
       setShowPostForm(false);
+      setPostMedia([]);
       postForm.reset();
     } catch (err: any) {
       setPostError(err?.response?.data?.message ?? "Erro ao publicar.");
     }
+  };
+
+  const handleEditPost = async (postId: string, data: PostForm) => {
+    try {
+      setPostError("");
+      const media = editMedia.filter(m => m.url.trim()).map(m => ({ type: m.type || "ARTICLE_LINK", url: m.url, title: m.title || undefined }));
+      await updatePostMut.mutateAsync({ id: postId, data: { title: data.title, content: data.content, media: media.length > 0 ? media : undefined } });
+      setEditingPost(null);
+      setEditMedia([]);
+    } catch (err: any) {
+      setPostError(err?.response?.data?.message ?? "Erro ao salvar.");
+    }
+  };
+
+  const addMediaItem = (setter: React.Dispatch<React.SetStateAction<MediaItem[]>>) => {
+    setter(prev => [...prev, { type: "IMAGE", url: "", title: "" }]);
+  };
+  const updateMediaItem = (setter: React.Dispatch<React.SetStateAction<MediaItem[]>>, idx: number, field: keyof MediaItem, value: string) => {
+    setter(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m));
+  };
+  const removeMediaItem = (setter: React.Dispatch<React.SetStateAction<MediaItem[]>>, idx: number) => {
+    setter(prev => prev.filter((_, i) => i !== idx));
   };
 
   return (
@@ -234,33 +259,52 @@ export default function ProjectDetailPage() {
                     {...postForm.register("content")}
                   />
 
-                  {/* Mídia opcional */}
+                  {/* Mídias dinâmicas */}
                   <div className="bg-neutral-50 dark:bg-neutral-700/50 rounded-xl p-3 border border-neutral-200 dark:border-neutral-600">
-                    <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-2">Mídia opcional (imagem, vídeo, artigo, documento)</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <select className="h-9 px-3 rounded-lg border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 dark:text-neutral-100 outline-none focus:border-brand-500" {...postForm.register("mediaType")}>
-                        <option value="">Tipo de mídia</option>
-                        <option value="IMAGE">📷 Imagem</option>
-                        <option value="VIDEO">▶ Vídeo</option>
-                        <option value="ARTICLE_LINK">📄 Link de artigo</option>
-                        <option value="DOCUMENT">📁 Documento</option>
-                      </select>
-                      <input
-                        placeholder="Título da mídia"
-                        className="h-9 px-3 rounded-lg border border-neutral-300 dark:border-neutral-600 text-sm outline-none focus:border-brand-500 bg-white dark:bg-neutral-800 dark:text-neutral-100"
-                        {...postForm.register("mediaTitle")}
-                      />
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">Mídias (imagem, vídeo, artigo, documento)</p>
+                      <button type="button" onClick={() => addMediaItem(setPostMedia)} className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-800 transition-colors">
+                        <Plus size={12} /> Adicionar mídia
+                      </button>
                     </div>
-                    <input
-                      placeholder="URL da mídia (https://...)"
-                      className="w-full mt-2 h-9 px-3 rounded-lg border border-neutral-300 dark:border-neutral-600 text-sm outline-none focus:border-brand-500 bg-white dark:bg-neutral-800 dark:text-neutral-100"
-                      {...postForm.register("mediaUrl")}
-                    />
-                    {postForm.formState.errors.mediaUrl && <p className="text-xs text-danger-500 mt-1">{postForm.formState.errors.mediaUrl.message}</p>}
+                    {postMedia.length === 0 && (
+                      <p className="text-xs text-neutral-400 italic">Nenhuma mídia adicionada. Clique em &quot;Adicionar mídia&quot; para incluir.</p>
+                    )}
+                    {postMedia.map((m, idx) => (
+                      <div key={idx} className="flex flex-col gap-2 mt-2 p-2 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-600">
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={m.type}
+                            onChange={e => updateMediaItem(setPostMedia, idx, "type", e.target.value)}
+                            className="h-8 px-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-xs bg-white dark:bg-neutral-800 dark:text-neutral-100 outline-none focus:border-brand-500 flex-shrink-0"
+                          >
+                            <option value="IMAGE">📷 Imagem</option>
+                            <option value="VIDEO">▶ Vídeo</option>
+                            <option value="ARTICLE_LINK">📄 Link de artigo</option>
+                            <option value="DOCUMENT">📁 Documento</option>
+                          </select>
+                          <input
+                            placeholder="Título da mídia"
+                            value={m.title}
+                            onChange={e => updateMediaItem(setPostMedia, idx, "title", e.target.value)}
+                            className="h-8 flex-1 px-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-xs outline-none focus:border-brand-500 bg-white dark:bg-neutral-800 dark:text-neutral-100"
+                          />
+                          <button type="button" onClick={() => removeMediaItem(setPostMedia, idx)} className="p-1 rounded-md text-neutral-400 hover:text-danger-500 hover:bg-danger-50 transition-all flex-shrink-0">
+                            <X size={13} />
+                          </button>
+                        </div>
+                        <input
+                          placeholder="URL da mídia (https://...)"
+                          value={m.url}
+                          onChange={e => updateMediaItem(setPostMedia, idx, "url", e.target.value)}
+                          className="h-8 px-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-xs outline-none focus:border-brand-500 bg-white dark:bg-neutral-800 dark:text-neutral-100"
+                        />
+                      </div>
+                    ))}
                   </div>
 
                   <div className="flex gap-2 justify-end">
-                    <Button type="button" variant="secondary" size="sm" onClick={() => setShowPostForm(false)}>Cancelar</Button>
+                    <Button type="button" variant="secondary" size="sm" onClick={() => { setShowPostForm(false); setPostMedia([]); }}>Cancelar</Button>
                     <Button type="submit" size="sm" loading={createPostMut.isPending}><Send size={13} /> Publicar</Button>
                   </div>
                 </div>
@@ -275,7 +319,8 @@ export default function ProjectDetailPage() {
             ) : (
               <div className="flex flex-col gap-4">
                 {posts.map((post: any) => {
-                  const canDeletePost = user?.id === post.authorId || isOwner;
+                  const canEditPost = user?.id === post.authorId || isOwner;
+                  const isEditing = editingPost === post.id;
                   return (
                     <article key={post.id} className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-5 shadow-card">
                       <div className="flex items-start justify-between gap-3 mb-3">
@@ -286,44 +331,133 @@ export default function ProjectDetailPage() {
                             <p className="text-[11px] text-neutral-400">{new Date(post.createdAt).toLocaleDateString("pt-BR", { day:"2-digit", month:"long", year:"numeric" })}</p>
                           </div>
                         </div>
-                        {canDeletePost && (
-                          <button
-                            onClick={() => deletePostMut.mutate(post.id)}
-                            className="p-1.5 rounded-lg text-neutral-300 hover:text-danger-500 hover:bg-danger-50 transition-all"
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                        {canEditPost && !isEditing && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => {
+                                setEditingPost(post.id);
+                                setEditMedia((post.media ?? []).map((m: any) => ({ type: m.type ?? "IMAGE", url: m.url ?? "", title: m.title ?? "" })));
+                                postForm.setValue("title", post.title);
+                                postForm.setValue("content", post.content);
+                              }}
+                              className="p-1.5 rounded-lg text-neutral-300 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950 transition-all"
+                              title="Editar"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              onClick={() => deletePostMut.mutate(post.id)}
+                              className="p-1.5 rounded-lg text-neutral-300 hover:text-danger-500 hover:bg-danger-50 transition-all"
+                              title="Excluir"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         )}
                       </div>
-                      <h3 className="font-display font-bold text-neutral-900 dark:text-neutral-100 mb-2">{post.title}</h3>
-                      <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">{post.content}</p>
 
-                      {/* Mídia */}
-                      {(post.media ?? []).length > 0 && (
-                        <div className="mt-4 flex flex-col gap-2">
-                          {post.media.map((m: any) => {
-                            const MIcon = MEDIA_ICON[m.type] ?? FileText;
-                            if (m.type === "IMAGE") return (
-                              <NextImage
-                                key={m.id}
-                                src={m.url}
-                                alt={m.title ?? ""}
-                                width={800}
-                                height={400}
-                                className="w-full rounded-xl object-cover max-h-64"
-                                loading="lazy"
-                              />
-                            );
-                            return (
-                              <a key={m.id} href={m.url} target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-2 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-700/50 border border-neutral-200 dark:border-neutral-600 hover:border-brand-300 transition-all text-sm">
-                                <MIcon size={14} className="text-brand-500 flex-shrink-0" />
-                                <span className="flex-1 text-neutral-700 dark:text-neutral-300 font-medium">{m.title ?? m.url}</span>
-                                <ExternalLink size={12} className="text-neutral-400" />
-                              </a>
-                            );
-                          })}
-                        </div>
+                      {isEditing ? (
+                        /* ── Formulário de edição inline ── */
+                        <form onSubmit={postForm.handleSubmit((data) => handleEditPost(post.id, data))} className="flex flex-col gap-3">
+                          {postError && (
+                            <div className="flex items-center gap-2 p-3 rounded-xl bg-danger-50 text-danger-700 text-xs">
+                              <AlertCircle size={13} /> {postError}
+                            </div>
+                          )}
+                          <input
+                            placeholder="Título"
+                            className="w-full h-10 rounded-xl border border-neutral-300 dark:border-neutral-600 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all bg-white dark:bg-neutral-700 dark:text-neutral-100"
+                            {...postForm.register("title")}
+                          />
+                          <textarea
+                            rows={4}
+                            className="w-full rounded-xl border border-neutral-300 dark:border-neutral-600 p-3 text-sm resize-none outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all bg-white dark:bg-neutral-700 dark:text-neutral-100"
+                            {...postForm.register("content")}
+                          />
+
+                          {/* Mídias dinâmicas — edição */}
+                          <div className="bg-neutral-50 dark:bg-neutral-700/50 rounded-xl p-3 border border-neutral-200 dark:border-neutral-600">
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">Mídias</p>
+                              <button type="button" onClick={() => addMediaItem(setEditMedia)} className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-800 transition-colors">
+                                <Plus size={12} /> Adicionar mídia
+                              </button>
+                            </div>
+                            {editMedia.length === 0 && (
+                              <p className="text-xs text-neutral-400 italic">Nenhuma mídia.</p>
+                            )}
+                            {editMedia.map((m, idx) => (
+                              <div key={idx} className="flex flex-col gap-2 mt-2 p-2 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-600">
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    value={m.type}
+                                    onChange={e => updateMediaItem(setEditMedia, idx, "type", e.target.value)}
+                                    className="h-8 px-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-xs bg-white dark:bg-neutral-800 dark:text-neutral-100 outline-none focus:border-brand-500 flex-shrink-0"
+                                  >
+                                    <option value="IMAGE">📷 Imagem</option>
+                                    <option value="VIDEO">▶ Vídeo</option>
+                                    <option value="ARTICLE_LINK">📄 Link de artigo</option>
+                                    <option value="DOCUMENT">📁 Documento</option>
+                                  </select>
+                                  <input
+                                    placeholder="Título da mídia"
+                                    value={m.title}
+                                    onChange={e => updateMediaItem(setEditMedia, idx, "title", e.target.value)}
+                                    className="h-8 flex-1 px-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-xs outline-none focus:border-brand-500 bg-white dark:bg-neutral-800 dark:text-neutral-100"
+                                  />
+                                  <button type="button" onClick={() => removeMediaItem(setEditMedia, idx)} className="p-1 rounded-md text-neutral-400 hover:text-danger-500 hover:bg-danger-50 transition-all flex-shrink-0">
+                                    <X size={13} />
+                                  </button>
+                                </div>
+                                <input
+                                  placeholder="URL da mídia (https://...)"
+                                  value={m.url}
+                                  onChange={e => updateMediaItem(setEditMedia, idx, "url", e.target.value)}
+                                  className="h-8 px-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-xs outline-none focus:border-brand-500 bg-white dark:bg-neutral-800 dark:text-neutral-100"
+                                />
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="flex gap-2 justify-end">
+                            <Button type="button" variant="secondary" size="sm" onClick={() => { setEditingPost(null); setEditMedia([]); postForm.reset(); }}>Cancelar</Button>
+                            <Button type="submit" size="sm" loading={updatePostMut.isPending}><Send size={13} /> Salvar</Button>
+                          </div>
+                        </form>
+                      ) : (
+                        /* ── Conteúdo do post (modo leitura) ── */
+                        <>
+                          <h3 className="font-display font-bold text-neutral-900 dark:text-neutral-100 mb-2">{post.title}</h3>
+                          <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">{post.content}</p>
+
+                          {/* Mídia */}
+                          {(post.media ?? []).length > 0 && (
+                            <div className="mt-4 flex flex-col gap-2">
+                              {post.media.map((m: any) => {
+                                const MIcon = MEDIA_ICON[m.type] ?? FileText;
+                                if (m.type === "IMAGE") return (
+                                  <NextImage
+                                    key={m.id ?? m.url}
+                                    src={m.url}
+                                    alt={m.title ?? ""}
+                                    width={800}
+                                    height={400}
+                                    className="w-full rounded-xl object-cover max-h-64"
+                                    loading="lazy"
+                                  />
+                                );
+                                return (
+                                  <a key={m.id ?? m.url} href={m.url} target="_blank" rel="noopener noreferrer"
+                                    className="flex items-center gap-2 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-700/50 border border-neutral-200 dark:border-neutral-600 hover:border-brand-300 transition-all text-sm">
+                                    <MIcon size={14} className="text-brand-500 flex-shrink-0" />
+                                    <span className="flex-1 text-neutral-700 dark:text-neutral-300 font-medium">{m.title ?? m.url}</span>
+                                    <ExternalLink size={12} className="text-neutral-400" />
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
                       )}
                     </article>
                   );

@@ -89,6 +89,7 @@ export const memberRequestsApi = {
 
 export const postsApi = {
   byId:   (id: string) => api.get(`/posts/${id}`),
+  update: (id: string, d: unknown) => api.patch(`/posts/${id}`, d),
   delete: (id: string) => api.delete(`/posts/${id}`),
 };
 
