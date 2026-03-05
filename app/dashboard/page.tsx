@@ -39,15 +39,15 @@ export default function DashboardPage() {
     name: "", department: "", institution: "", avatar: "", bio: "", linkedin: "",
   });
 
-  const { data: stats }         = useDashboardStats();
-  const { data: myProjects = [] } = useDashboardProjects();
-  const { data: myRequests = [] } = useDashboardRequests();
+  const { data: stats }            = useDashboardStats();
+  const { data: myProjects = [] }  = useDashboardProjects();
+  const { data: myRequests = [] }  = useDashboardRequests();
   const { data: pendingReqs = [] } = useDashboardPendingRequests();
   const { data: subscriptions = [] } = useDashboardSubscriptions();
 
-  const reviewMut = useReviewRequest();
-  const cancelMut = useCancelRequest();
-  const deleteMut = useDeleteProject();
+  const reviewMut  = useReviewRequest();
+  const cancelMut  = useCancelRequest();
+  const deleteMut  = useDeleteProject();
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/auth/login");
@@ -55,12 +55,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) setProfileForm({
-      name:        user.name                   ?? "",
-      department:  (user as any).department    ?? "",
-      institution: (user as any).institution   ?? "",
-      avatar:      (user as any).avatar        ?? "",
-      bio:         (user as any).bio           ?? "",
-      linkedin:    (user as any).linkedin      ?? "",
+      name:        user.name                 ?? "",
+      department:  (user as any).department  ?? "",
+      institution: (user as any).institution ?? "",
+      avatar:      (user as any).avatar      ?? "",
+      bio:         (user as any).bio         ?? "",
+      linkedin:    (user as any).linkedin    ?? "",
     });
   }, [user]);
 
@@ -91,54 +91,67 @@ export default function DashboardPage() {
       setProfileLoading(false);
     }
   };
-  const ownedProjects = myProjects.filter((p: any) => p.isOwner);
+
+  const ownedProjects  = myProjects.filter((p: any) => p.isOwner);
   const memberProjects = myProjects.filter((p: any) => !p.isOwner);
-  const pendingCount = pendingReqs.length;
+  const pendingCount   = pendingReqs.length;
 
   const TABS = [
-    { id: "overview" as Tab,      label: "Visão Geral",   icon: LayoutDashboard },
-    { id: "projects" as Tab,      label: "Projetos",       icon: FlaskConical    },
+    { id: "overview" as Tab,      label: "Visão Geral",  icon: LayoutDashboard },
+    { id: "projects" as Tab,      label: "Projetos",      icon: FlaskConical    },
     { id: "requests" as Tab,      label: `Solicitações${pendingCount > 0 ? ` (${pendingCount})` : ""}`, icon: Users },
-    { id: "subscriptions" as Tab, label: "Acompanhando",  icon: Bell            },
+    { id: "subscriptions" as Tab, label: "Acompanhando", icon: Bell            },
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
       {/* ── Profile ── */}
-      <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-5 mb-6 shadow-card">
+      <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-4 sm:p-5 mb-4 sm:mb-6 shadow-card">
         {!editingProfile ? (
           /* MODO VISUALIZAÇÃO */
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl overflow-hidden bg-brand-100 dark:bg-brand-900 flex items-center justify-center flex-shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            {/* Avatar + info */}
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden bg-brand-100 dark:bg-brand-900 flex items-center justify-center flex-shrink-0">
                 {(user as any).avatar ? (
                   <NextImage src={(user as any).avatar} alt={user.name} width={56} height={56} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="font-display font-extrabold text-brand-700 dark:text-brand-300 text-lg">{initials}</span>
+                  <span className="font-display font-extrabold text-brand-700 dark:text-brand-300 text-base sm:text-lg">{initials}</span>
                 )}
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-lg">{user.name}</h2>
+                  <h2 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-base sm:text-lg truncate">{user.name}</h2>
                   <Badge variant={user.role === "professor" ? "brand" : "neutral"}>
                     {user.role === "professor" ? "Professor" : "Aluno"}
                   </Badge>
                 </div>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
                   {[(user as any).department, (user as any).institution, user.email].filter(Boolean).join(" · ")}
                 </p>
-                 <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
-                  {[(user as any).bio].filter(Boolean).join(" · ")}
-                </p>
+                {(user as any).bio && (
+                  <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-1">
+                    {(user as any).bio}
+                  </p>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Link href="/perfil" className="p-2 rounded-lg text-neutral-400 hover:text-brand-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all" title="Configurações">
+            {/* Ações */}
+            <div className="flex items-center gap-2 sm:flex-shrink-0">
+              <Link
+                href="/perfil"
+                className="p-2 rounded-lg text-neutral-400 hover:text-brand-600 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all"
+                title="Configurações"
+              >
                 <Settings size={17} />
               </Link>
-              <Link href="/projetos/novo">
-                <Button size="sm"><PlusCircle size={14} /> Criar projeto</Button>
+              <Link href="/projetos/novo" className="flex-1 sm:flex-none">
+                <Button size="sm" className="w-full sm:w-auto">
+                  <PlusCircle size={14} />
+                  <span className="hidden xs:inline sm:inline">Criar projeto</span>
+                  <span className="xs:hidden sm:hidden">Criar</span>
+                </Button>
               </Link>
             </div>
           </div>
@@ -147,15 +160,17 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-display font-bold text-neutral-800 dark:text-neutral-200">Editar perfil</h3>
-              <button onClick={() => { setEditingProfile(false); setProfileError(""); }}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all">
+              <button
+                onClick={() => { setEditingProfile(false); setProfileError(""); }}
+                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all"
+              >
                 <X size={15} />
               </button>
             </div>
 
             {/* Preview do avatar */}
-            <div className="flex items-center gap-4 mb-4 p-3 bg-neutral-50 dark:bg-neutral-700/50 rounded-xl border border-neutral-200 dark:border-neutral-700">
-              <div className="w-12 h-12 rounded-xl overflow-hidden bg-brand-100 dark:bg-brand-900 flex items-center justify-center flex-shrink-0">
+            <div className="flex items-start gap-3 sm:gap-4 mb-4 p-3 bg-neutral-50 dark:bg-neutral-700/50 rounded-xl border border-neutral-200 dark:border-neutral-700">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden bg-brand-100 dark:bg-brand-900 flex items-center justify-center flex-shrink-0">
                 {profileForm.avatar ? (
                   <img src={profileForm.avatar} alt="preview" className="w-full h-full object-cover"
                     onError={(e) => (e.currentTarget.style.display = "none")} />
@@ -163,7 +178,7 @@ export default function DashboardPage() {
                   <span className="font-bold text-brand-700 dark:text-brand-300 text-sm">{initials}</span>
                 )}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">URL da foto de perfil</p>
                 <input
                   className="w-full h-9 rounded-xl border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
@@ -171,13 +186,13 @@ export default function DashboardPage() {
                   onChange={e => setProfileForm(f => ({ ...f, avatar: e.target.value }))}
                   placeholder="https://exemplo.com/sua-foto.jpg"
                 />
-                <p className="text-[10px] text-neutral-400 mt-1">
+                <p className="text-[10px] text-neutral-400 mt-1 hidden sm:block">
                   Cole a URL de uma imagem. Sugestão: use seu avatar do GitHub (https://github.com/seuusuario.png).
                 </p>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
                 { label: "Nome completo",  key: "name",        placeholder: "Seu nome" },
                 { label: "Departamento",   key: "department",  placeholder: "Ex: Engenharia de Computação" },
@@ -194,7 +209,7 @@ export default function DashboardPage() {
                   />
                 </div>
               ))}
-              <div className="md:col-span-2">
+              <div className="col-span-1 sm:col-span-2">
                 <label className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1 block">Bio</label>
                 <textarea rows={2}
                   className="w-full rounded-xl border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-3 py-2 text-sm resize-none outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
@@ -212,51 +227,60 @@ export default function DashboardPage() {
                 Cancelar
               </Button>
               <Button size="sm" loading={profileLoading} onClick={handleSaveProfile}>
-                <Check size={13} /> Salvar perfil
+                <Check size={13} /> Salvar
               </Button>
             </div>
           </div>
         )}
       </div>
+
       {/* ── Stats ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
         {[
-          { label: "Projetos criados",  value: stats?.ownedCount    ?? 0, icon: FlaskConical,  color: "bg-brand-50 dark:bg-brand-950 text-brand-600 dark:text-brand-400"    },
-          { label: "Sou membro",        value: stats?.memberCount   ?? 0, icon: Users,          color: "bg-violet-50 dark:bg-violet-950 text-violet-600 dark:text-violet-400"  },
-          { label: "Acompanhando",      value: stats?.subsCount     ?? 0, icon: Bell,           color: "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400"    },
-          { label: "Solicitações",      value: stats?.pendingRequests ?? 0, icon: Clock,        color: "bg-warning-50 dark:bg-warning-950 text-warning-700 dark:text-warning-400" },
+          { label: "Projetos criados", value: stats?.ownedCount      ?? 0, icon: FlaskConical, color: "bg-brand-50 dark:bg-brand-950 text-brand-600 dark:text-brand-400"      },
+          { label: "Sou membro",       value: stats?.memberCount     ?? 0, icon: Users,         color: "bg-violet-50 dark:bg-violet-950 text-violet-600 dark:text-violet-400"    },
+          { label: "Acompanhando",     value: stats?.subsCount       ?? 0, icon: Bell,          color: "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400"       },
+          { label: "Solicitações",     value: stats?.pendingRequests ?? 0, icon: Clock,         color: "bg-warning-50 dark:bg-warning-950 text-warning-700 dark:text-warning-400" },
         ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-4 shadow-card">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${color}`}>
-              <Icon size={16} />
+          <div key={label} className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-3 sm:p-4 shadow-card">
+            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center mb-2 sm:mb-3 ${color}`}>
+              <Icon size={15} />
             </div>
-            <p className="font-display font-extrabold text-2xl text-neutral-900 dark:text-neutral-100">{value}</p>
-            <p className="text-xs text-neutral-400 mt-0.5">{label}</p>
+            <p className="font-display font-extrabold text-xl sm:text-2xl text-neutral-900 dark:text-neutral-100">{value}</p>
+            <p className="text-[11px] sm:text-xs text-neutral-400 mt-0.5 leading-tight">{label}</p>
           </div>
         ))}
       </div>
 
       {/* ── Tabs ── */}
       <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-card overflow-hidden">
+        {/* Tab bar — ícone+texto no sm+, só ícone no mobile */}
         <div className="flex border-b border-neutral-200 dark:border-neutral-700 px-2 pt-2 gap-1 overflow-x-auto">
           {TABS.map(({ id, label, icon: Icon }) => (
-            <button key={id} onClick={() => setTab(id)}
-              className={cn("flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-xl transition-all border-b-2 whitespace-nowrap",
-                tab === id ? "text-brand-700 dark:text-brand-400 border-brand-600 bg-brand-50/50 dark:bg-brand-950/50" : "text-neutral-500 dark:text-neutral-400 border-transparent hover:text-neutral-700 dark:hover:text-neutral-200"
-              )}>
-              <Icon size={14} /> {label}
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={cn(
+                "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-t-xl transition-all border-b-2 whitespace-nowrap flex-shrink-0",
+                tab === id
+                  ? "text-brand-700 dark:text-brand-400 border-brand-600 bg-brand-50/50 dark:bg-brand-950/50"
+                  : "text-neutral-500 dark:text-neutral-400 border-transparent hover:text-neutral-700 dark:hover:text-neutral-200"
+              )}
+            >
+              <Icon size={14} />
+              <span className="hidden xs:inline">{label}</span>
             </button>
           ))}
         </div>
 
-        <div className="p-5">
+        <div className="p-4 sm:p-5">
 
           {/* ── VISÃO GERAL ── */}
           {tab === "overview" && (
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-display font-bold text-neutral-800 dark:text-neutral-200">Meus projetos</h3>
+                  <h3 className="font-display font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200">Meus projetos</h3>
                   <button onClick={() => setTab("projects")} className="text-xs font-semibold text-brand-600 hover:text-brand-800 flex items-center gap-1">
                     Ver todos <ArrowRight size={12} />
                   </button>
@@ -274,7 +298,7 @@ export default function DashboardPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-display font-bold text-neutral-800 dark:text-neutral-200">Solicitações pendentes</h3>
+                  <h3 className="font-display font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200">Solicitações pendentes</h3>
                   {pendingCount > 0 && (
                     <button onClick={() => setTab("requests")} className="text-xs font-semibold text-brand-600 hover:text-brand-800 flex items-center gap-1">
                       Ver todas <ArrowRight size={12} />
@@ -282,20 +306,24 @@ export default function DashboardPage() {
                   )}
                 </div>
                 {pendingReqs.slice(0, 3).map((req: any) => (
-                  <div key={req.id} className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-700/50 border border-neutral-100 dark:border-neutral-700 mb-2">
+                  <div key={req.id} className="flex items-center gap-2 sm:gap-3 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-700/50 border border-neutral-100 dark:border-neutral-700 mb-2">
                     <Avatar name={req.user?.name ?? "?"} size="sm" src={req.user?.avatar} />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate">{req.user?.name}</p>
                       <p className="text-[11px] text-neutral-400 truncate">{req.project?.title}</p>
                     </div>
-                    <div className="flex gap-1">
-                      <button onClick={() => reviewMut.mutate({ id: req.id, status: "APPROVED" })}
-                        className="p-1.5 rounded-lg bg-success-600 text-white hover:bg-success-700 hover:scale-110 transition-all duration-150 shadow-sm">
-                        <CheckCircle2 size={15} />
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => reviewMut.mutate({ id: req.id, status: "APPROVED" })}
+                        className="p-1.5 rounded-lg bg-success-600 text-white hover:bg-success-700 hover:scale-110 transition-all duration-150 shadow-sm"
+                      >
+                        <CheckCircle2 size={14} />
                       </button>
-                      <button onClick={() => reviewMut.mutate({ id: req.id, status: "REJECTED" })}
-                        className="p-1.5 rounded-lg bg-danger-500 text-white hover:bg-danger-600 hover:scale-110 transition-all duration-150 shadow-sm">
-                        <XCircle size={15} />
+                      <button
+                        onClick={() => reviewMut.mutate({ id: req.id, status: "REJECTED" })}
+                        className="p-1.5 rounded-lg bg-danger-500 text-white hover:bg-danger-600 hover:scale-110 transition-all duration-150 shadow-sm"
+                      >
+                        <XCircle size={14} />
                       </button>
                     </div>
                   </div>
@@ -312,10 +340,10 @@ export default function DashboardPage() {
             <div>
               {ownedProjects.length > 0 && (
                 <>
-                  <h3 className="font-display font-bold text-neutral-800 dark:text-neutral-200 mb-4 flex items-center gap-2">
-                    <FlaskConical size={16} className="text-brand-500" /> Projetos que criei
+                  <h3 className="font-display font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200 mb-3 sm:mb-4 flex items-center gap-2">
+                    <FlaskConical size={15} className="text-brand-500" /> Projetos que criei
                   </h3>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
                     {ownedProjects.map((p: any) => (
                       <div key={p.id} className="relative group">
                         <ProjectCard project={p} />
@@ -333,20 +361,20 @@ export default function DashboardPage() {
 
               {memberProjects.length > 0 && (
                 <>
-                  <h3 className="font-display font-bold text-neutral-800 dark:text-neutral-200 mb-4 flex items-center gap-2">
-                    <Users size={16} className="text-violet-500" /> Projetos que participo
+                  <h3 className="font-display font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200 mb-3 sm:mb-4 flex items-center gap-2">
+                    <Users size={15} className="text-violet-500" /> Projetos que participo
                   </h3>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {memberProjects.map((p: any) => <ProjectCard key={p.id} project={p} />)}
                   </div>
                 </>
               )}
 
               {myProjects.length === 0 && (
-                <div className="text-center py-16">
-                  <FlaskConical size={32} className="text-neutral-200 mx-auto mb-3" />
-                  <p className="text-neutral-500 mb-4">Você ainda não tem projetos.</p>
-                  <div className="flex justify-center gap-3">
+                <div className="text-center py-12 sm:py-16">
+                  <FlaskConical size={28} className="text-neutral-200 mx-auto mb-3" />
+                  <p className="text-neutral-500 mb-4 text-sm">Você ainda não tem projetos.</p>
+                  <div className="flex flex-col xs:flex-row justify-center gap-2 sm:gap-3">
                     <Link href="/projetos/novo"><Button size="sm"><PlusCircle size={14} /> Criar projeto</Button></Link>
                     <Link href="/projetos"><Button variant="secondary" size="sm">Explorar projetos</Button></Link>
                   </div>
@@ -357,11 +385,11 @@ export default function DashboardPage() {
 
           {/* ── SOLICITAÇÕES ── */}
           {tab === "requests" && (
-            <div className="grid lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
 
-              {/* Recebidas (nos meus projetos) */}
+              {/* Recebidas */}
               <div>
-                <h3 className="font-display font-bold text-neutral-800 dark:text-neutral-200 mb-4">Solicitações recebidas</h3>
+                <h3 className="font-display font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200 mb-3 sm:mb-4">Solicitações recebidas</h3>
                 {pendingReqs.length === 0 ? (
                   <p className="text-sm text-neutral-400 py-6 text-center border border-dashed border-neutral-200 dark:border-neutral-700 rounded-xl">
                     Nenhuma solicitação pendente nos seus projetos.
@@ -369,27 +397,27 @@ export default function DashboardPage() {
                 ) : (
                   <div className="flex flex-col gap-3">
                     {pendingReqs.map((req: any) => (
-                      <div key={req.id} className="p-4 bg-neutral-50 dark:bg-neutral-700/50 rounded-2xl border border-neutral-200 dark:border-neutral-700">
-                        <div className="flex items-center gap-3 mb-2">
+                      <div key={req.id} className="p-3 sm:p-4 bg-neutral-50 dark:bg-neutral-700/50 rounded-2xl border border-neutral-200 dark:border-neutral-700">
+                        <div className="flex items-center gap-2 sm:gap-3 mb-2">
                           <Avatar name={req.user?.name ?? "?"} size="sm" src={req.user?.avatar} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">{req.user?.name}</p>
+                            <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate">{req.user?.name}</p>
                             <p className="text-xs text-neutral-400 truncate">{req.project?.title}</p>
                           </div>
-                          <Badge variant="warning">Pendente</Badge>
+                          <Badge variant="warning" className="flex-shrink-0">Pendente</Badge>
                         </div>
                         {req.message && (
-                          <p className="text-xs text-neutral-600 dark:text-neutral-300 bg-white dark:bg-neutral-800 rounded-lg p-2 border border-neutral-100 dark:border-neutral-700 mb-3 italic">
+                          <p className="text-xs text-neutral-600 dark:text-neutral-300 bg-white dark:bg-neutral-800 rounded-lg p-2 border border-neutral-100 dark:border-neutral-700 mb-3 italic line-clamp-3">
                             "{req.message}"
                           </p>
                         )}
                         <div className="flex gap-2">
-                          <Button size="sm" variant="success" className="flex-1 hover:scale-105 transition-all duration-150 shadow-sm"
+                          <Button size="sm" variant="success" className="flex-1"
                             loading={reviewMut.isPending}
                             onClick={() => reviewMut.mutate({ id: req.id, status: "APPROVED" })}>
                             <CheckCircle2 size={13} /> Aprovar
                           </Button>
-                          <Button size="sm" variant="danger" className="flex-1 hover:scale-105 transition-all duration-150 shadow-sm"
+                          <Button size="sm" variant="danger" className="flex-1"
                             loading={reviewMut.isPending}
                             onClick={() => reviewMut.mutate({ id: req.id, status: "REJECTED" })}>
                             <XCircle size={13} /> Rejeitar
@@ -401,9 +429,9 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Enviadas (minhas solicitações) */}
+              {/* Enviadas */}
               <div>
-                <h3 className="font-display font-bold text-neutral-800 dark:text-neutral-200 mb-4">Minhas solicitações enviadas</h3>
+                <h3 className="font-display font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200 mb-3 sm:mb-4">Minhas solicitações enviadas</h3>
                 {myRequests.length === 0 ? (
                   <p className="text-sm text-neutral-400 py-6 text-center border border-dashed border-neutral-200 dark:border-neutral-700 rounded-xl">
                     Você ainda não solicitou entrar em nenhum grupo.
@@ -415,8 +443,8 @@ export default function DashboardPage() {
                       const s = REQ_STATUS[req.status] ?? REQ_STATUS.pending;
                       const Icon = s.icon;
                       return (
-                        <div key={req.id} className="flex items-center gap-3 p-4 bg-neutral-50 dark:bg-neutral-700/50 rounded-2xl border border-neutral-200 dark:border-neutral-700">
-                          <Icon size={18} className={s.color} />
+                        <div key={req.id} className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-neutral-50 dark:bg-neutral-700/50 rounded-2xl border border-neutral-200 dark:border-neutral-700">
+                          <Icon size={16} className={cn(s.color, "flex-shrink-0")} />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate">
                               {req.project?.title ?? "Projeto"}
@@ -425,11 +453,12 @@ export default function DashboardPage() {
                               {new Date(req.createdAt).toLocaleDateString("pt-BR")}
                             </p>
                           </div>
-                          <Badge variant={s.variant}>{s.label}</Badge>
+                          <Badge variant={s.variant} className="flex-shrink-0">{s.label}</Badge>
                           {req.status === "pending" && (
                             <button
                               onClick={() => cancelMut.mutate(req.id)}
-                              className="p-1.5 rounded-lg text-neutral-400 hover:text-danger-500 hover:bg-danger-50 transition-all">
+                              className="p-1.5 rounded-lg text-neutral-400 hover:text-danger-500 hover:bg-danger-50 transition-all flex-shrink-0"
+                            >
                               <XCircle size={14} />
                             </button>
                           )}
@@ -445,27 +474,27 @@ export default function DashboardPage() {
           {/* ── ACOMPANHANDO ── */}
           {tab === "subscriptions" && (
             <div>
-                <h3 className="font-display font-bold text-neutral-800 dark:text-neutral-200 mb-5 flex items-center gap-2">
-                <Bell size={16} className="text-amber-500" /> Projetos que acompanho
+              <h3 className="font-display font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200 mb-4 sm:mb-5 flex items-center gap-2">
+                <Bell size={15} className="text-amber-500" /> Projetos que acompanho
               </h3>
               {subscriptions.length === 0 ? (
-                <div className="text-center py-16">
-                  <Bell size={32} className="text-neutral-200 mx-auto mb-3" />
-                  <p className="text-neutral-500 mb-3">Você não está acompanhando nenhum projeto ainda.</p>
-                  <p className="text-sm text-neutral-400 mb-4">Ao se inscrever em um projeto, você recebe as atualizações e postagens do grupo.</p>
+                <div className="text-center py-12 sm:py-16">
+                  <Bell size={28} className="text-neutral-200 mx-auto mb-3" />
+                  <p className="text-neutral-500 mb-2 text-sm">Você não está acompanhando nenhum projeto ainda.</p>
+                  <p className="text-xs sm:text-sm text-neutral-400 mb-4 max-w-xs mx-auto">Ao se inscrever em um projeto, você recebe as atualizações e postagens do grupo.</p>
                   <Link href="/projetos"><Button variant="secondary" size="sm">Explorar projetos</Button></Link>
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {subscriptions.map((sub: any) => {
                     const p = sub.project;
                     if (!p) return null;
                     return (
                       <Link key={sub.id} href={`/projetos/${p.id}`}
-                        className="group bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-4 shadow-card hover:shadow-card-md hover:-translate-y-0.5 transition-all">
+                        className="group bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-3 sm:p-4 shadow-card hover:shadow-card-md hover:-translate-y-0.5 transition-all">
                         <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950 flex items-center justify-center flex-shrink-0">
-                            <BookmarkCheck size={16} className="text-amber-600" />
+                          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-50 dark:bg-amber-950 flex items-center justify-center flex-shrink-0">
+                            <BookmarkCheck size={15} className="text-amber-600" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 line-clamp-2 group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">
