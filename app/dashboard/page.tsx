@@ -126,7 +126,10 @@ export default function DashboardPage() {
                   </Badge>
                 </div>
                 <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
-                  {[(user as any).department, (user as any).institution].filter(Boolean).join(" · ") || user.email}
+                  {[(user as any).department, (user as any).institution, user.email].filter(Boolean).join(" · ")}
+                </p>
+                 <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                  {[(user as any).bio].filter(Boolean).join(" · ")}
                 </p>
               </div>
             </div>

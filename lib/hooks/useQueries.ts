@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { dashboardApi, memberRequestsApi, notificationsApi, postsApi, projectsApi, publicationsApi } from "@/lib/api/axios";
+import { dashboardApi, memberRequestsApi, notificationsApi, postsApi, projectsApi, publicationsApi, usersApi } from "@/lib/api/axios";
 import { adaptProject, adaptPublication, adaptRequest } from "@/lib/adapters";
 
 const STALE = {
@@ -157,4 +157,12 @@ export function useNotifications(enabled = true) {
 export function useMarkNotificationRead() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (id: string) => notificationsApi.markRead(id), onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }) });
+}
+export function useUserProfile(id: string | null) {
+  return useQuery({
+    queryKey: ["user", id],
+    queryFn: async () => { const { data } = await usersApi.getById(id!); return data; },
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+  });
 }

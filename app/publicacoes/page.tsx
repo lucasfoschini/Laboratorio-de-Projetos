@@ -19,13 +19,6 @@ const TYPE_OPTIONS: { value: PublicationType | "all"; label: string }[] = [
   { value: "thesis",       label: "TCC/Monografia" },
 ];
 
-const YEAR_OPTIONS = [
-  { value: "all",  label: "Todos os anos" },
-  { value: "2025", label: "2025" },
-  { value: "2024", label: "2024" },
-  { value: "2023", label: "2023" },
-];
-
 /* ── Formulários por tipo ────────────────────────────────────────── */
 
 function FieldGroup({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
@@ -223,6 +216,11 @@ export default function PublicacoesPage() {
     if (year !== "all") result = result.filter(p => String(p.year) === year);
     return result;
   }, [publications, search, type, year]);
+
+const yearOptions = useMemo(() => {
+  const years = [...new Set(publications.map(p => String(p.year)))].sort((a, b) => Number(b) - Number(a));
+  return [{ value: "all", label: "Todos os anos" }, ...years.map(y => ({ value: y, label: y }))];
+}, [publications]);
 
   const countByType = useMemo(() =>
     publications.reduce((acc: Record<string, number>, p) => { acc[p.type] = (acc[p.type] ?? 0) + 1; return acc; }, {}),
@@ -483,7 +481,8 @@ export default function PublicacoesPage() {
           </div>
           <select value={year} onChange={e => setYear(e.target.value)}
             className="h-9 px-3 rounded-xl border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
-            {YEAR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+           // DEPOIS
+          {yearOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
           {(search || type !== "all" || year !== "all") && (
             <button onClick={() => { setSearch(""); setType("all"); setYear("all"); }} className="text-xs text-danger-500 hover:text-danger-700 font-medium">Limpar</button>

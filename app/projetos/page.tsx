@@ -49,7 +49,10 @@ export default function ProjetosPage() {
     }
 
     if (status !== "all") result = result.filter((p) => p.status === status);
-    if (area   !== "all") result = result.filter((p) => p.area   === area);
+    if (area !== "all") result = result.filter((p) => {
+  const areas = (p as any).areas?.map((a: string) => a.toLowerCase()) ?? [];
+  return p.area === area || areas.includes(area);
+});
 
     if (sort === "newest")   result.sort((a, b) => b.createdAt?.localeCompare(a.createdAt ?? "") ?? 0);
     if (sort === "vacancies") result.sort((a, b) => (b.vacancies ?? 0) - (a.vacancies ?? 0));

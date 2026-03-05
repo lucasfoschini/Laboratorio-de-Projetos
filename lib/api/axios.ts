@@ -115,6 +115,7 @@ export const usersApi = {
   search: (q: string) => api.get("/users/search", { params: { q } }),
   me:     ()          => api.get("/users/me"),
   updateMe: (d: unknown) => api.patch("/users/me", d),
+  getById: (id: string) => api.get(`/users/${id}`),
 };
 
 export const notificationsApi = {

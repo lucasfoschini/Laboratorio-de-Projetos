@@ -21,6 +21,7 @@ import {
 } from "@/lib/hooks/useQueries";
 import { memberRequestsApi } from "@/lib/api/axios";
 import { useAuth } from "@/contexts/auth";
+import { UserProfileModal } from "@/components/ui/UserProfileModal";
 
 const joinSchema   = z.object({ message: z.string().min(30, "Descreva sua motivação (mín. 30 caracteres)").max(500) });
 const postSchema   = z.object({
@@ -57,6 +58,7 @@ export default function ProjectDetailPage() {
   const [postMedia,     setPostMedia]     = useState<MediaItem[]>([]);
   const [editingPost,   setEditingPost]   = useState<string | null>(null);
   const [editMedia,     setEditMedia]     = useState<MediaItem[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const { data: project, isLoading } = useProject(id);
   const { data: subStatus }          = useSubscriptionStatus(id, isAuthenticated);
@@ -174,6 +176,7 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <UserProfileModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
       <Link href="/projetos" className="inline-flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-brand-600 mb-6 transition-colors group">
         <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" /> Todos os projetos
       </Link>
@@ -550,9 +553,13 @@ export default function ProjectDetailPage() {
             <div className="flex flex-col gap-2">
               {(project.members ?? []).slice(0, 6).map((m: any) => (
                 <div key={m.id} className="flex items-center gap-2">
-                  <Avatar name={m.name} size="sm" src={m.avatar} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate">{m.name}</p>
+  <Link href={`/usuarios/${m.id}`} className="rounded-full flex-shrink-0">
+  <Avatar name={m.name} size="sm" src={m.avatar} />
+</Link>
+<div className="flex-1 min-w-0">
+  <Link href={`/usuarios/${m.id}`} className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate hover:text-emerald-700 hover:underline transition-colors">
+    {m.name}
+  </Link>
                     {m.department && <p className="text-[11px] text-neutral-400 truncate">{m.department}</p>}
                   </div>
                   {m.id === project.ownerId ? (
