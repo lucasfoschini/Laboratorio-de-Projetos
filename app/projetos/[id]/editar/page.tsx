@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,21 +11,14 @@ import { projectSchema, type ProjectSchema } from "@/lib/schemas";
 import { useProject, useUpdateProject } from "@/lib/hooks/useQueries";
 import { useAuth } from "@/contexts/auth";
 import { AREA_LABELS, cn } from "@/lib/utils";
-import { useState } from "react";
 
-const CATEGORIES = [
-  { value: "MACRO_CAD",  label: "Macro CAD"  },
-  { value: "METROLOGIA", label: "Metrologia" },
-  { value: "OUTRO",      label: "Outro"      },
-];
+const AREA_KEYS = [
+  "controle_sistemas", "sistemas_mecatronicos", "acionamentos_eletricos",
+  "sistemas_inteligentes", "robotica_industrial", "automacao_mecanica",
+  "automacao_eletrica", "engenharia_projeto", "manufatura_digital",
+  "projeto_computador", "simulacao_computacional",
+] as const;
 
-const AREA_KEYS = ["technology","health","education","environment","law","arts","engineering","social"] as const;
-
-const STATUS_OPTIONS = [
-  { value: "ABERTO",       label: "Aberto — aceitando membros"   },
-  { value: "EM_ANDAMENTO", label: "Em andamento — em execução"  },
-  { value: "FINALIZADO",   label: "Finalizado"                  },
-];
 
 const Field = ({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) => (
   <div className="flex flex-col gap-1.5">
@@ -46,9 +39,8 @@ export default function EditarProjetoPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const updateMutation = useUpdateProject();
-  const [apiError, setApiError] = useState("");
+  const [apiError, setApiError]           = useState("");
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
-  const [customCategory, setCustomCategory] = useState("");
 
   const { data: project, isLoading: projectLoading } = useProject(id);
 
@@ -60,38 +52,25 @@ export default function EditarProjetoPage() {
     if (!isLoading && !isAuthenticated) router.push("/auth/login");
   }, [isLoading, isAuthenticated, router]);
 
-  // Preenche o formulário com os dados atuais do projeto
   useEffect(() => {
     if (!project) return;
     const statusMap: Record<string, NonNullable<ProjectSchema["status"]>> = {
-      open: "ABERTO",
+      open:        "ABERTO",
       in_progress: "EM_ANDAMENTO",
-      completed: "FINALIZADO",
+      completed:   "FINALIZADO",
     };
-    // Inicializa áreas do projeto
     const projectAreas = project.areas?.length
       ? project.areas.map((a: string) => a.toLowerCase())
       : project.area ? [project.area] : [];
     setSelectedAreas(projectAreas);
-    // Inicializa categoria customizada
-    const knownCats = ["MACRO_CAD", "METROLOGIA", "OUTRO"];
-    const cat = project.category ?? "OUTRO";
-    // categoryText vem do backend quando a categoria é customizada
-    const catText = (project as any).categoryText || "";
-    if (catText) {
-      setCustomCategory(catText);
-    } else if (!knownCats.includes(cat)) {
-      setCustomCategory(cat);
-    }
     reset({
       title:               project.title,
       description:         project.description,
       area:                projectAreas[0] ?? "",
-      category:            knownCats.includes(cat) ? cat : "OUTRO",
       vacancies:           project.vacancies,
-      startDate:           project.startDate ? new Date(project.startDate).toISOString().slice(0,10) : "",
-      endDate:             project.endDate   ? new Date(project.endDate).toISOString().slice(0,10)   : "",
-      applicationDeadline: project.applicationDeadline ? new Date(project.applicationDeadline).toISOString().slice(0,10) : "",
+      startDate:           project.startDate           ? new Date(project.startDate).toISOString().slice(0, 10)           : "",
+      endDate:             project.endDate             ? new Date(project.endDate).toISOString().slice(0, 10)             : "",
+      applicationDeadline: project.applicationDeadline ? new Date(project.applicationDeadline).toISOString().slice(0, 10) : "",
       tempo:               project.tempo        ?? "",
       custo:               project.custo        ?? 0,
       escopo:              project.escopo       ?? "",
@@ -110,8 +89,6 @@ export default function EditarProjetoPage() {
     });
   };
 
-  const watchCategory = watch("category");
-
   const onSubmit = async (data: ProjectSchema) => {
     try {
       setApiError("");
@@ -121,18 +98,14 @@ export default function EditarProjetoPage() {
         setApiError(`O projeto já possui ${minVac} membro${minVac !== 1 ? "s" : ""}. Não é possível definir menos vagas.`);
         return;
       }
-      const finalCategory = data.category === "OUTRO" && customCategory.trim()
-        ? customCategory.trim()
-        : data.category || "OUTRO";
       await updateMutation.mutateAsync({
         id,
         data: {
           title:               data.title,
           description:         data.description,
           area:                selectedAreas[0].toUpperCase(),
+          status:              data.status === "FINALIZADO" ? "FINALIZADO" : undefined,
           areas:               selectedAreas.map((a) => a.toUpperCase()),
-          category:            finalCategory,
-          status:              data.status || undefined,
           vacancies:           Number(data.vacancies),
           startDate:           data.startDate           ? new Date(data.startDate).toISOString()           : undefined,
           endDate:             data.endDate             ? new Date(data.endDate).toISOString()             : undefined,
@@ -189,68 +162,44 @@ export default function EditarProjetoPage() {
           <h2 className="font-display font-bold text-neutral-800 dark:text-neutral-200 mb-5">Informações básicas</h2>
           <div className="flex flex-col gap-4">
             <Field label="Título do projeto *" error={errors.title?.message}>
-              <input placeholder="Ex: Monitoramento de Qualidade da Água com IoT" className={inputCls(errors.title?.message)} {...register("title")} />
+              <input placeholder="Ex: Dispositivo de Soldagem de Braço de Suspensão" className={inputCls(errors.title?.message)} {...register("title")} />
             </Field>
             <Field label="Descrição *" error={errors.description?.message}>
               <textarea rows={4} placeholder="Descreva o objetivo, metodologia e impacto esperado..." className={cn("rounded-xl border border-neutral-300 dark:border-neutral-600 p-3 text-sm resize-none outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all bg-white dark:bg-neutral-800 dark:text-neutral-100", errors.description?.message && "border-danger-500")} {...register("description")} />
             </Field>
-            <div className="grid md:grid-cols-2 gap-4">
-              <Field label="Áreas temáticas *" error={selectedAreas.length === 0 ? "Selecione pelo menos uma área" : undefined}>
-                <input type="hidden" {...register("area")} />
-                <div className="flex flex-wrap gap-2">
-                  {AREA_KEYS.map((a) => (
-                    <button
-                      key={a}
-                      type="button"
-                      onClick={() => toggleArea(a)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all",
-                        selectedAreas.includes(a)
-                          ? "bg-brand-600 text-white border-brand-600 shadow-sm"
-                          : "bg-white dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-600 hover:border-brand-300 hover:text-brand-600"
-                      )}
-                    >
-                      {AREA_LABELS[a]}
-                    </button>
-                  ))}
-                </div>
-                {selectedAreas.length > 0 && (
-                  <p className="text-xs text-brand-600 mt-1">{selectedAreas.length} área{selectedAreas.length !== 1 ? "s" : ""} selecionada{selectedAreas.length !== 1 ? "s" : ""}</p>
-                )}
-              </Field>
-              <div className="flex flex-col gap-4">
-                <Field label="Categoria do lab">
-                  <select className={inputCls()} {...register("category")}>
-                    {CATEGORIES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
-                  </select>
-                </Field>
-                <div className={cn(watchCategory !== "OUTRO" && "hidden")}>
-                  <Field label="Nome da categoria personalizada">
-                    <input
-                      className={inputCls()}
-                      value={customCategory}
-                      onChange={(e) => setCustomCategory(e.target.value)}
-                      placeholder="Ex: Robótica, Bioquímica..."
-                    />
-                  </Field>
-                </div>
+            <Field label="Áreas temáticas *" error={selectedAreas.length === 0 ? "Selecione pelo menos uma área" : undefined}>
+              <input type="hidden" {...register("area")} />
+              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
+                {AREA_KEYS.map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => toggleArea(a)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all",
+                      selectedAreas.includes(a)
+                        ? "bg-brand-600 text-white border-brand-600 shadow-sm"
+                        : "bg-white dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-600 hover:border-brand-300 hover:text-brand-600"
+                    )}
+                  >
+                    {AREA_LABELS[a]}
+                  </button>
+                ))}
               </div>
-            </div>
+              {selectedAreas.length > 0 && (
+                <p className="text-xs text-brand-600 mt-1">{selectedAreas.length} área{selectedAreas.length !== 1 ? "s" : ""} selecionada{selectedAreas.length !== 1 ? "s" : ""}</p>
+              )}
+            </Field>
             <Field label="Tags (separadas por vírgula)">
-              <input placeholder="Ex: arduino, iot, meio ambiente" className={inputCls()} {...register("tags")} />
+              <input placeholder="Ex: soldagem. mecatrônica. automação" className={inputCls()} {...register("tags")} />
             </Field>
           </div>
         </div>
 
-        {/* ── Status e Vagas ── */}
+        {/* ── Vagas ── */}
         <div className="p-6">
-          <h2 className="font-display font-bold text-neutral-800 dark:text-neutral-200 mb-5">Status e vagas</h2>
+          <h2 className="font-display font-bold text-neutral-800 dark:text-neutral-200 mb-5">Vagas</h2>
           <div className="grid md:grid-cols-2 gap-4">
-            <Field label="Status do projeto">
-              <select className={inputCls()} {...register("status")}>
-                {STATUS_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </Field>
             <Field label="Vagas disponíveis *" error={errors.vacancies?.message}>
               <input type="number" min={project.enrolled ?? 1} max={100} className={inputCls(errors.vacancies?.message)} {...register("vacancies")} />
               {project.enrolled > 0 && (
@@ -258,12 +207,8 @@ export default function EditarProjetoPage() {
                   Mínimo de <span className="font-semibold text-brand-600">{project.enrolled}</span> vaga{project.enrolled !== 1 ? "s" : ""} (membros atuais)
                 </p>
               )}
-              {Number(watch("vacancies")) > 0 && Number(watch("vacancies")) < (project.enrolled ?? 1) && (
-                <p className="text-xs text-danger-500 mt-1 font-medium">
-                  ⚠ Não é possível definir menos vagas do que os {project.enrolled} membro{project.enrolled !== 1 ? "s" : ""} já inscritos.
-                </p>
-              )}
             </Field>
+            <div />
           </div>
           <div className="grid md:grid-cols-2 gap-4 mt-4">
             <Field label="Data de início">

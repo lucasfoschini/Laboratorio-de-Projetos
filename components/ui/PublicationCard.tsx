@@ -1,7 +1,13 @@
+"use client";
+
 import Link from "next/link";
+import { useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, FileText, Presentation, BookOpen, GraduationCap, Trash2, Pencil } from "lucide-react";
 import { Badge, Avatar } from "@/components/ui";
 import { TYPE_LABELS } from "@/lib/utils";
+import { publicationsApi } from "@/lib/api/axios";
+import { adaptPublication } from "@/lib/adapters";
 import type { Publication } from "@/types";
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
@@ -27,8 +33,21 @@ interface PublicationCardProps {
 }
 
 export function PublicationCard({ publication, canDelete, canEdit, onDelete, isDeleting }: PublicationCardProps) {
+  const queryClient = useQueryClient();
+
+  const handleMouseEnter = useCallback(() => {
+    queryClient.prefetchQuery({
+      queryKey: ["publication", publication.id],
+      queryFn: async () => {
+        const { data } = await publicationsApi.byId(publication.id);
+        return adaptPublication(data);
+      },
+      staleTime: 1000 * 60 * 5,
+    });
+  }, [queryClient, publication.id]);
+
   return (
-    <div className="relative">
+    <div className="relative" onMouseEnter={handleMouseEnter}>
       {/* Botões de ação — canto superior direito */}
       {(canEdit || (canDelete && onDelete)) && (
         <div className="absolute top-3 right-3 flex items-center gap-1 z-10">

@@ -15,10 +15,10 @@ export function HeroBanner() {
       <div className="relative max-w-xl">
         <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur rounded-full px-3 py-1 mb-6">
           <Zap size={12} className="text-brand-300" />
-          <span className="text-xs font-semibold text-brand-100 tracking-wide">Plataforma de Projetos de Extensão</span>
+          <span className="text-xs font-semibold text-brand-100 tracking-wide">Plataforma de Projetos</span>
         </div>
         <h1 className="text-3xl md:text-5xl font-display font-extrabold text-white leading-tight tracking-tight mb-4">
-          Laboratório<br /><span className="text-brand-300">Ativo</span>
+          Laboratório de<br /><span className="text-brand-300">Extensão Ativo</span>
         </h1>
         <p className="text-brand-200 text-base leading-relaxed mb-8 max-w-md">
           Conecte pessoas, crie projetos com impacto real e acompanhe o progresso de iniciativas que transformam a sociedade.

@@ -1,17 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, BookOpen, Calendar, Download, FileText,
   GraduationCap, Presentation, Tag, User, Users, Building2,
   ClipboardList, Globe, MapPin, Clock, Award, Github, Hash, Layers,
-  BookMarked, Pencil,
+  BookMarked, Pencil, MessageSquare,
 } from "lucide-react";
 import { Badge, Avatar, Button, Skeleton } from "@/components/ui";
 import { RichContent } from "@/components/ui/RichContent";
 import { cn, TYPE_LABELS } from "@/lib/utils";
-import { usePublication } from "@/lib/hooks/useQueries";
+import { usePublication, useSuggestPublication } from "@/lib/hooks/useQueries";
 import { useAuth } from "@/contexts/auth";
 import type { Publication, PublicationType } from "@/types";
 
@@ -113,6 +114,9 @@ export default function PublicationDetailPage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
   const { data: rawPub, isLoading, isError } = usePublication(id);
+  const suggestMut = useSuggestPublication();
+  const [showSuggest,    setShowSuggest]    = useState(false);
+  const [suggestionText, setSuggestionText] = useState("");
 
   if (isLoading) return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
@@ -140,12 +144,15 @@ export default function PublicationDetailPage() {
   const { abstract, extras } = parseAbstract(pub.abstract);
   const typeLower = pub.type as PublicationType;
   const raw = pub as any;
-  const canEdit = isAuthenticated && !!user?.id && (
-    pub.authors?.some((a: any) => a.id === user.id) ||
-    raw.userId === user.id || raw.createdBy === user.id ||
-    raw.authorId === user.id || raw.project?.ownerId === user.id ||
+  const isProfessor = isAuthenticated && !!user?.id && (
+    raw.project?.ownerId === user.id ||
     raw.project?.professorId === user.id || raw.project?.professor?.id === user.id
   );
+  const isAuthor = isAuthenticated && !!user?.id && (
+    pub.authors?.some((a: any) => a.id === user.id) ||
+    raw.userId === user.id || raw.createdBy === user.id || raw.authorId === user.id
+  );
+  const canEdit = isAuthor;
   const DetailsMap: Record<string, React.FC<{ extras: Record<string, string>; pub: Publication }>> = {
     article: ArticleDetails, report: ReportDetails,
     presentation: PresentationDetails, thesis: ThesisDetails,
@@ -155,6 +162,40 @@ export default function PublicationDetailPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
+      {/* Modal de sugestão */}
+      {showSuggest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-xl max-w-md w-full border border-neutral-200 dark:border-neutral-700">
+            <h2 className="font-display font-bold text-lg text-neutral-900 dark:text-neutral-100 mb-1">Enviar sugestão de revisão</h2>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+              O autor receberá sua sugestão por e-mail e notificação, podendo editar e reenviar para aprovação.
+            </p>
+            <textarea
+              rows={5}
+              value={suggestionText}
+              onChange={e => setSuggestionText(e.target.value)}
+              placeholder="Descreva as alterações necessárias antes de aprovar..."
+              className="w-full rounded-xl border border-neutral-300 dark:border-neutral-600 p-3 text-sm resize-none outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 bg-white dark:bg-neutral-700 dark:text-neutral-100 mb-4"
+              autoFocus
+            />
+            <div className="flex gap-3 justify-end">
+              <Button variant="secondary" onClick={() => setShowSuggest(false)}>Cancelar</Button>
+              <Button
+                loading={suggestMut.isPending}
+                disabled={!suggestionText.trim()}
+                onClick={async () => {
+                  await suggestMut.mutateAsync({ id: pub.id, suggestion: suggestionText });
+                  setShowSuggest(false);
+                  router.push("/dashboard?tab=requests");
+                }}
+              >
+                <MessageSquare size={14} /> Enviar sugestão
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-5 sm:mb-6">
         <Link href="/publicacoes"
@@ -163,11 +204,22 @@ export default function PublicationDetailPage() {
           <span className="hidden sm:inline">Voltar para publicações</span>
           <span className="sm:hidden">Voltar</span>
         </Link>
-        {canEdit && (
-          <Link href={`/publicacoes/${pub.id}/editar`}>
-            <Button variant="secondary" size="sm"><Pencil size={14} /> <span className="hidden sm:inline">Editar</span></Button>
-          </Link>
-        )}
+        <div className="flex gap-2">
+          {canEdit && (
+            <Link href={`/publicacoes/${pub.id}/editar`}>
+              <Button variant="secondary" size="sm"><Pencil size={14} /> <span className="hidden sm:inline">Editar</span></Button>
+            </Link>
+          )}
+          {isProfessor && !isAuthor && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => { setShowSuggest(true); setSuggestionText(""); }}
+            >
+              <MessageSquare size={14} /> <span className="hidden sm:inline">Sugestão</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Hero */}
@@ -200,7 +252,7 @@ export default function PublicationDetailPage() {
         </div>
       </div>
 
-      {/* Grid — sidebar vai abaixo no mobile */}
+      {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
 
         {/* Conteúdo principal */}

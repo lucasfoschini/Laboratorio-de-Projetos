@@ -1,9 +1,10 @@
 "use client";
 
+import { useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Cpu, Heart, BookOpen, Leaf, Scale, Palette, Wrench, Users } from "lucide-react";
+import { ArrowRight, Cpu, Zap, Bot, Settings, Wrench, Cog, CircuitBoard, Factory, Monitor, FlaskConical } from "lucide-react";
 import { Badge, Avatar } from "@/components/ui";
 import { cn, AREA_LABELS, STATUS_LABELS } from "@/lib/utils";
 import { projectsApi } from "@/lib/api/axios";
@@ -18,25 +19,31 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "neutral" | "brand"
 };
 
 const AREA_COLORS: Record<string, string> = {
-  technology:  "bg-violet-50 text-violet-700",
-  health:      "bg-rose-50 text-rose-700",
-  education:   "bg-amber-50 text-amber-700",
-  environment: "bg-emerald-50 text-emerald-700",
-  law:         "bg-sky-50 text-sky-700",
-  arts:        "bg-pink-50 text-pink-700",
-  engineering: "bg-orange-50 text-orange-700",
-  social:      "bg-teal-50 text-teal-700",
+  controle_sistemas:       "bg-blue-50   text-blue-700",
+  sistemas_mecatronicos:   "bg-violet-50 text-violet-700",
+  acionamentos_eletricos:  "bg-yellow-50 text-yellow-700",
+  sistemas_inteligentes:   "bg-cyan-50   text-cyan-700",
+  robotica_industrial:     "bg-rose-50   text-rose-700",
+  automacao_mecanica:      "bg-orange-50 text-orange-700",
+  automacao_eletrica:      "bg-amber-50  text-amber-700",
+  engenharia_projeto:      "bg-teal-50   text-teal-700",
+  manufatura_digital:      "bg-indigo-50 text-indigo-700",
+  projeto_computador:      "bg-emerald-50 text-emerald-700",
+  simulacao_computacional: "bg-pink-50   text-pink-700",
 };
 
 const AREA_ICON: Record<string, React.ElementType> = {
-  technology:  Cpu,
-  health:      Heart,
-  education:   BookOpen,
-  environment: Leaf,
-  law:         Scale,
-  arts:        Palette,
-  engineering: Wrench,
-  social:      Users,
+  controle_sistemas:       Settings,
+  sistemas_mecatronicos:   CircuitBoard,
+  acionamentos_eletricos:  Zap,
+  sistemas_inteligentes:   Bot,
+  robotica_industrial:     Cog,
+  automacao_mecanica:      Wrench,
+  automacao_eletrica:      Cpu,
+  engenharia_projeto:      FlaskConical,
+  manufatura_digital:      Factory,
+  projeto_computador:      Monitor,
+  simulacao_computacional: Monitor,
 };
 
 interface ProjectCardProps {
@@ -55,16 +62,16 @@ export function ProjectCard({ project, variant = "default" }: ProjectCardProps) 
 
   const creator = (project as any).owner ?? (project as any).professor;
 
-  const handleMouseEnter = () => {
+  const handleMouseEnter = useCallback(() => {
     queryClient.prefetchQuery({
       queryKey: ["project", project.id],
       queryFn: async () => {
         const { data } = await projectsApi.byId(project.id);
         return adaptProject(data);
       },
-      staleTime: 1000 * 60 * 2, // não re-busca se já tem cache de até 2 min
+      staleTime: 1000 * 60 * 2,
     });
-  };
+  }, [queryClient, project.id]);
 
   if (variant === "compact") {
     return (
@@ -91,11 +98,27 @@ export function ProjectCard({ project, variant = "default" }: ProjectCardProps) 
       <article className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-5 shadow-card hover:shadow-card-md hover:-translate-y-0.5 transition-all duration-200">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex flex-wrap gap-1.5">
-            {((project as any).areas?.length ? (project as any).areas.map((a: string) => a.toLowerCase()) : [project.area]).map((a: string) => (
-              <div key={a} className={cn("px-2.5 py-1 rounded-lg text-xs font-semibold", AREA_COLORS[a] || "bg-neutral-100 text-neutral-600")}>
-                {AREA_LABELS[a] || a}
-              </div>
-            ))}
+            {(() => {
+              const areas = (project as any).areas?.length
+                ? (project as any).areas.map((a: string) => a.toLowerCase())
+                : [project.area];
+              const visible = areas.slice(0, 2);
+              const extra   = areas.length - 2;
+              return (
+                <>
+                  {visible.map((a: string) => (
+                    <div key={a} className={cn("px-2.5 py-1 rounded-lg text-xs font-semibold", AREA_COLORS[a] || "bg-neutral-100 text-neutral-600")}>
+                      {AREA_LABELS[a] || a}
+                    </div>
+                  ))}
+                  {extra > 0 && (
+                    <div className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400">
+                      +{extra}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
           <Badge variant={STATUS_VARIANT[project.status]}>{STATUS_LABELS[project.status]}</Badge>
         </div>

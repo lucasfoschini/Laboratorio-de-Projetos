@@ -70,7 +70,7 @@ export default function RegisterPage() {
           <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
             <FlaskConical size={18} className="text-white" />
           </div>
-          <span className="font-display font-bold text-white text-lg">Laboratório Ativo</span>
+          <span className="font-display font-bold text-white text-lg">LEXA</span>
         </div>
 
         <div>

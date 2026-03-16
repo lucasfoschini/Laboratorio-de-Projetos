@@ -48,22 +48,16 @@ export default function LoginPage() {
           <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
             <FlaskConical size={18} className="text-white" />
           </div>
-          <span className="font-display font-bold text-white text-lg">Laboratório Ativo</span>
+          <span className="font-display font-bold text-white text-lg">LEXA</span>
         </div>
 
         <div>
-          <blockquote className="text-white/90 text-xl font-display font-bold leading-relaxed mb-6">
-            "A extensão universitária é a ponte entre o saber acadêmico e as necessidades reais da sociedade."
-          </blockquote>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">CS</span>
-            </div>
-            <div>
-              <p className="text-white font-semibold text-sm">Prof. Dr. Carlos Silva</p>
-              <p className="text-white/60 text-xs">Departamento de Computação</p>
-            </div>
-          </div>
+          <h2 className="text-white text-3xl font-display font-extrabold leading-tight mb-4">
+            Faça parte da comunidade acadêmica
+          </h2>
+          <p className="text-white/70 text-base leading-relaxed">
+            Conecte-se com projetos reais, colabore com professores e crie impacto na sociedade através da extensão universitária.
+          </p>
         </div>
       </div>
 

@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import NextImage from "next/image";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, User, Mail, Building2, GraduationCap, Loader2, ImageIcon } from "lucide-react";
+import { ArrowLeft, Save, User, Mail, Building2, GraduationCap, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Button, Input } from "@/components/ui";
+import { ImageUpload } from "@/components/ui/ImageUpload";
 import { useAuth } from "@/contexts/auth";
 import { usersApi } from "@/lib/api/axios";
 
@@ -165,13 +166,13 @@ export default function PerfilPage() {
             placeholder="Ex: Ciência da Computação"
           />
 
-          <Input
-            label="URL da foto de perfil"
-            leftIcon={<ImageIcon size={16} className="text-neutral-400" />}
+          <ImageUpload
+            label="Foto de perfil"
             value={avatarUrl}
-            onChange={(e) => setAvatarUrl(e.target.value)}
-            placeholder="https://exemplo.com/sua-foto.jpg"
-            hint="Cole o link de uma imagem para usar como avatar."
+            onChange={setAvatarUrl}
+            shape="circle"
+            previewSize={72}
+            hint="Faça upload ou cole uma URL de imagem."
           />
 
           <div className="flex flex-col gap-1.5">

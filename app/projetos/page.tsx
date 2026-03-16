@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, SlidersHorizontal, FlaskConical } from "lucide-react";
+import { Search, SlidersHorizontal, FlaskConical, Loader2 } from "lucide-react";
 import { useDebounce } from "@/lib/hooks/useDebounce";
-import { Input, Badge, Button, EmptyState, Skeleton } from "@/components/ui";
+import { Input, Button, EmptyState, Skeleton } from "@/components/ui";
 import { ProjectCard } from "@/components/ui/ProjectCard";
 import { AREA_LABELS } from "@/lib/utils";
 import { useProjects } from "@/lib/hooks/useQueries";
 import { cn } from "@/lib/utils";
-import type { Project, ProjectArea, ProjectStatus } from "@/types";
+import type { ProjectArea, ProjectStatus } from "@/types";
 
 const STATUS_OPTIONS: { value: ProjectStatus | "all"; label: string }[] = [
   { value: "all",         label: "Todos"         },
@@ -36,17 +36,35 @@ export default function ProjetosPage() {
   const [sort,        setSort]        = useState("newest");
   const [showFilters, setShowFilters] = useState(false);
 
-  const { data: projects = [], isLoading, isError } = useProjects();
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useProjects();
 
+  // Achata todas as páginas carregadas
+  const allProjects = useMemo(
+    () => data?.pages.flatMap((p) => p.data) ?? [],
+    [data],
+  );
+
+  // Total e contagem de abertos vêm do backend (primeira página)
+  const total     = data?.pages[0]?.total ?? 0;
+
+  // Filtro + ordenação client-side sobre os itens já carregados
   const filtered = useMemo(() => {
-    let result = [...projects];
+    let result = [...allProjects];
 
     if (debouncedSearch.trim()) {
       const q = debouncedSearch.toLowerCase();
       result = result.filter(
-        (p) => p.title.toLowerCase().includes(q) ||
-               p.description.toLowerCase().includes(q) ||
-               p.tags?.some((t: string) => t.includes(q)),
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q) ||
+          p.tags?.some((t: string) => t.includes(q)),
       );
     }
 
@@ -61,9 +79,9 @@ export default function ProjetosPage() {
     if (sort === "alpha")     result.sort((a, b) => a.title.localeCompare(b.title));
 
     return result;
-  }, [projects, debouncedSearch, status, area, sort]);
+  }, [allProjects, debouncedSearch, status, area, sort]);
 
-  const openCount        = projects.filter((p: Project) => p.status === "open").length;
+  const openCount        = allProjects.filter((p) => p.status === "open").length;
   const hasActiveFilters = search || status !== "all" || area !== "all";
 
   return (
@@ -88,7 +106,6 @@ export default function ProjetosPage() {
       {/* ── Filtros ── */}
       <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 shadow-card">
 
-        {/* Linha 1: busca + botão filtros */}
         <div className="flex gap-2">
           <div className="flex-1 min-w-0">
             <Input
@@ -109,7 +126,7 @@ export default function ProjetosPage() {
           </Button>
         </div>
 
-        {/* Linha 2: status — scroll horizontal no mobile */}
+        {/* Status — scroll horizontal no mobile */}
         <div className="flex gap-1.5 mt-2.5 overflow-x-auto pb-0.5 scrollbar-none">
           {STATUS_OPTIONS.map((opt) => (
             <button
@@ -130,8 +147,6 @@ export default function ProjetosPage() {
         {/* Painel avançado */}
         {showFilters && (
           <div className="mt-3 pt-3 sm:mt-4 sm:pt-4 border-t border-neutral-100 dark:border-neutral-700 space-y-4">
-
-            {/* Área temática */}
             <div>
               <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-2">Área temática</p>
               <div className="flex flex-wrap gap-1.5">
@@ -152,7 +167,6 @@ export default function ProjetosPage() {
               </div>
             </div>
 
-            {/* Ordenar + Limpar — empilha no mobile, lado a lado no sm+ */}
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-2">Ordenar</p>
@@ -190,15 +204,24 @@ export default function ProjetosPage() {
       {/* ── Contagem ── */}
       <div className="flex items-center justify-between mb-4 sm:mb-5">
         <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
-          <span className="font-semibold text-neutral-700 dark:text-neutral-300">{filtered.length}</span>
-          {" "}projeto{filtered.length !== 1 ? "s" : ""} encontrado{filtered.length !== 1 ? "s" : ""}
+          {debouncedSearch || status !== "all" || area !== "all" ? (
+            <>
+              <span className="font-semibold text-neutral-700 dark:text-neutral-300">{filtered.length}</span>
+              {" "}de {allProjects.length} carregados
+            </>
+          ) : (
+            <>
+              <span className="font-semibold text-neutral-700 dark:text-neutral-300">{total}</span>
+              {" "}projeto{total !== 1 ? "s" : ""} encontrado{total !== 1 ? "s" : ""}
+            </>
+          )}
         </p>
       </div>
 
       {/* ── Grid ── */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
-          {[1,2,3,4,5,6].map((i) => (
+          {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-4 sm:p-5 shadow-card space-y-3">
               <Skeleton className="h-5 w-20" />
               <Skeleton className="h-6 w-full" />
@@ -230,11 +253,38 @@ export default function ProjetosPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
-          {filtered.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+            {filtered.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+
+          {/* Botão carregar mais — só aparece se não houver filtro ativo */}
+          {hasNextPage && !debouncedSearch && status === "all" && area === "all" && (
+            <div className="flex justify-center mt-8">
+              <Button
+                variant="secondary"
+                onClick={() => fetchNextPage()}
+                loading={isFetchingNextPage}
+                className="min-w-40"
+              >
+                {isFetchingNextPage ? (
+                  <><Loader2 size={14} className="animate-spin" /> Carregando...</>
+                ) : (
+                  "Carregar mais"
+                )}
+              </Button>
+            </div>
+          )}
+
+          {/* Indicador de fim */}
+          {!hasNextPage && allProjects.length > 12 && (
+            <p className="text-center text-xs text-neutral-400 dark:text-neutral-500 mt-8">
+              Todos os {total} projetos foram carregados
+            </p>
+          )}
+        </>
       )}
     </div>
   );

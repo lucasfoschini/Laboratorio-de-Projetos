@@ -87,7 +87,7 @@ function RedefinirSenhaContent() {
           <div className="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center shadow-md">
             <FlaskConical size={18} className="text-white" />
           </div>
-          <span className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-lg">Laboratório Ativo</span>
+          <span className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-lg">LEXA</span>
         </div>
 
         {done ? (

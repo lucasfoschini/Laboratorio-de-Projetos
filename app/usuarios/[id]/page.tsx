@@ -21,14 +21,17 @@ const STATUS_MAP: Record<string, { label: string; variant: "success" | "brand" |
 };
 
 const AREA_COLORS: Record<string, string> = {
-  technology:  "bg-violet-50 text-violet-700",
-  health:      "bg-rose-50 text-rose-700",
-  education:   "bg-amber-50 text-amber-700",
-  environment: "bg-emerald-50 text-emerald-700",
-  law:         "bg-sky-50 text-sky-700",
-  arts:        "bg-pink-50 text-pink-700",
-  engineering: "bg-orange-50 text-orange-700",
-  social:      "bg-teal-50 text-teal-700",
+  controle_sistemas:       "bg-blue-50   text-blue-700",
+  sistemas_mecatronicos:   "bg-violet-50 text-violet-700",
+  acionamentos_eletricos:  "bg-yellow-50 text-yellow-700",
+  sistemas_inteligentes:   "bg-cyan-50   text-cyan-700",
+  robotica_industrial:     "bg-rose-50   text-rose-700",
+  automacao_mecanica:      "bg-orange-50 text-orange-700",
+  automacao_eletrica:      "bg-amber-50  text-amber-700",
+  engenharia_projeto:      "bg-teal-50   text-teal-700",
+  manufatura_digital:      "bg-indigo-50 text-indigo-700",
+  projeto_computador:      "bg-emerald-50 text-emerald-700",
+  simulacao_computacional: "bg-pink-50   text-pink-700",
 };
 
 function getStatus(status: string) {

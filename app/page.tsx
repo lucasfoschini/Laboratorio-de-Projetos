@@ -9,9 +9,9 @@ import { QuickAccess } from "@/components/sections/QuickAccess";
 export const metadata: Metadata = { title: "Início" };
 
 const HOW = [
-  { step: "1", title: "Crie seu projeto", desc: "Qualquer usuário pode criar um projeto de extensão, adicionar membros do grupo e publicar atualizações." },
+  { step: "1", title: "Analise os Projetos", desc: "Qualquer usuário pode pesquisar e analisar os projetos publicados na plataforma. Diretamente na seção dos Projetos ou pelas publicações, que são oriundas dos Projetos." },
   { step: "2", title: "Peça para entrar", desc: "Encontrou um projeto interessante? Envie uma solicitação ao grupo e aguarde a aprovação." },
-  { step: "3", title: "Acompanhe sem entrar", desc: "Inscreva-se em projetos para receber as atualizações e saber quando forem finalizados." },
+  { step: "3", title: "Acompanhe os Projetos", desc: "Encontrou um projeto interessante? Clique em 'Acompanhar o Projeto' para receber as atualizações e saber quando forem finalizados." },
 ];
 
 export default function HomePage() {

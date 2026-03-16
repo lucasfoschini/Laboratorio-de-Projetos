@@ -10,11 +10,13 @@ export function QueryProvider({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime:            1000 * 60 * 3,  // 3 minutos de cache global
-            refetchOnWindowFocus: false,           // não re-busca ao trocar de aba
+            staleTime:            1000 * 60 * 5,  // 5 min (era 3 min)
+            refetchOnWindowFocus: false,
+            refetchOnReconnect:   false,
             retry: (failureCount, error: unknown) => {
               const status = (error as { response?: { status: number } })?.response?.status;
-              if (status === 401 || status === 403 || status === 404) return false;
+              // 429 não retenta aqui — o backoff já é tratado no axios interceptor
+              if (status === 401 || status === 403 || status === 404 || status === 429) return false;
               return failureCount < 2;
             },
           },

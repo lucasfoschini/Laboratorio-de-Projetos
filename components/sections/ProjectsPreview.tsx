@@ -8,9 +8,11 @@ import { Skeleton } from "@/components/ui";
 import type { Project } from "@/types";
 
 export function ProjectsPreview() {
-  const { data: projects, isLoading } = useProjects();
+  const { data, isLoading } = useProjects();
 
-  const featured = projects?.filter((p: Project) => p.status === "open").slice(0, 3) ?? [];
+  // useProjects usa useInfiniteQuery — achata a primeira página
+  const allProjects = data?.pages.flatMap((p) => p.data) ?? [];
+  const featured    = allProjects.filter((p: Project) => p.status === "open").slice(0, 3);
 
   return (
     <section>

@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
 import { useTheme } from "@/contexts/theme";
-import { useDashboardPendingRequests, useDashboardSubscriptions, useSubscribedActivity, useNotifications } from "@/lib/hooks/useQueries";
+import { useNotificationSummary } from "@/lib/hooks/useQueries";
 
 const NAV = [
   { href: "/",            label: "Início"      },
@@ -39,11 +39,15 @@ function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [seenIds, _setSeenIds] = useState<string[]>([]);
+  const [expandedNotifId, setExpandedNotifId] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
-  const { data: pending = [] } = useDashboardPendingRequests();
-  const { data: activity } = useSubscribedActivity(true);
-  const { data: subscriptions = [] } = useDashboardSubscriptions();
-  const { data: systemNotifs = [] } = useNotifications(true);
+  // ✅ 1 request em vez de 4
+  const { data: summary } = useNotificationSummary(true);
+
+  const pending       = summary?.pendingRequests    ?? [];
+  const subscriptions = summary?.subscriptions       ?? [];
+  const activity      = summary?.activity            ?? { posts: [], publications: [] };
+  const systemNotifs  = summary?.systemNotifications ?? [];
 
   // Carrega estado persistido no mount
   useEffect(() => {
@@ -274,42 +278,61 @@ function NotificationBell() {
                         Avisos do sistema
                       </p>
                     </div>
-                    {visibleSystemNotifs.slice(0, 5).map((notif: any) => (
-                      <div key={notif.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors border-b border-neutral-100 dark:border-neutral-700 last:border-0">
-                        <Link
-                          href={notif.projectId ? `/projetos/${notif.projectId}` : notif.project?.id ? `/projetos/${notif.project.id}` : "/dashboard"}
-                          onClick={() => setOpen(false)}
-                          className="flex items-start gap-3 flex-1 min-w-0"
-                        >
-                          <div className={cn(
-                            "w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5",
-                            notif.type === "REQUEST_ACCEPTED" ? "bg-green-100 dark:bg-green-900" :
-                            notif.type === "MEMBER_REMOVED"   ? "bg-red-100 dark:bg-red-900" :
-                            "bg-violet-100 dark:bg-violet-900",
-                          )}>
-                            <span className={cn(
-                              "text-[10px] font-bold",
-                              notif.type === "REQUEST_ACCEPTED" ? "text-green-700 dark:text-green-300" :
-                              notif.type === "MEMBER_REMOVED"   ? "text-red-700 dark:text-red-300" :
-                              "text-violet-700 dark:text-violet-300",
+                    {visibleSystemNotifs.slice(0, 5).map((notif: any) => {
+                      const isExpanded = expandedNotifId === notif.id;
+                      return (
+                        <div key={notif.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors border-b border-neutral-100 dark:border-neutral-700 last:border-0">
+                          <button
+                            onClick={() => setExpandedNotifId(isExpanded ? null : notif.id)}
+                            className="flex items-start gap-3 flex-1 min-w-0 text-left"
+                          >
+                            <div className={cn(
+                              "w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5",
+                              notif.type === "REQUEST_ACCEPTED" ? "bg-green-100 dark:bg-green-900" :
+                              notif.type === "MEMBER_REMOVED"   ? "bg-red-100 dark:bg-red-900" :
+                              "bg-violet-100 dark:bg-violet-900",
                             )}>
-                              {notif.type === "REQUEST_ACCEPTED" ? "✓" : notif.type === "MEMBER_REMOVED" ? "✕" : "!"}
-                            </span>
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 line-clamp-2">{notif.message}</p>
-                            {notif.createdAt && (
-                              <p className="text-[10px] text-neutral-400 mt-0.5">
-                                {new Date(notif.createdAt).toLocaleDateString("pt-BR")}
+                              <span className={cn(
+                                "text-[10px] font-bold",
+                                notif.type === "REQUEST_ACCEPTED" ? "text-green-700 dark:text-green-300" :
+                                notif.type === "MEMBER_REMOVED"   ? "text-red-700 dark:text-red-300" :
+                                "text-violet-700 dark:text-violet-300",
+                              )}>
+                                {notif.type === "REQUEST_ACCEPTED" ? "✓" : notif.type === "MEMBER_REMOVED" ? "✕" : "!"}
+                              </span>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className={cn("text-xs font-semibold text-neutral-800 dark:text-neutral-200", !isExpanded && "line-clamp-2")}>
+                                {notif.message}
                               </p>
-                            )}
-                          </div>
-                        </Link>
-                        <button onClick={() => handleDismiss(notif.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors" title="Dispensar">
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
+                              {notif.createdAt && (
+                                <p className="text-[10px] text-neutral-400 mt-0.5">
+                                  {new Date(notif.createdAt).toLocaleDateString("pt-BR")}
+                                  {!isExpanded && notif.message?.length > 80 && <span className="ml-1 text-brand-500">· ver mais</span>}
+                                </p>
+                              )}
+                              {isExpanded && (
+                                <Link
+                                  href={
+                                    notif.type === "PUBLICATION_SUGGESTION" ? "/dashboard?tab=requests" :
+                                    notif.type === "PUBLICATION_PENDING"    ? "/dashboard?tab=requests" :
+                                    notif.projectId ? `/projetos/${notif.projectId}` :
+                                    notif.project?.id ? `/projetos/${notif.project.id}` : "/dashboard"
+                                  }
+                                  onClick={() => setOpen(false)}
+                                  className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-semibold text-brand-600 hover:text-brand-800"
+                                >
+                                  Ir para →
+                                </Link>
+                              )}
+                            </div>
+                          </button>
+                          <button onClick={() => handleDismiss(notif.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors" title="Dispensar">
+                            <X size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </>
                 )}
               </>
@@ -343,10 +366,10 @@ export function Navbar() {
               <FlaskConical size={16} className="text-white" />
             </div>
             <span className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-[15px] tracking-tight hidden sm:block">
-              Laboratório<span className="text-brand-600 dark:text-brand-400"> Ativo</span>
+              LEXA
             </span>
             <span className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-[15px] tracking-tight sm:hidden">
-              Lab<span className="text-brand-600 dark:text-brand-400">Ativo</span>
+              LEXA
             </span>
           </Link>
 

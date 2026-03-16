@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { BookOpen, Plus, Search, X, AlertCircle, ChevronDown, UserPlus } from "lucide-react";
+import { BookOpen, Plus, Search, X, AlertCircle, UserPlus, Loader2, Clock } from "lucide-react";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 import { Input, Button, EmptyState, Skeleton } from "@/components/ui";
 import { PublicationCard } from "@/components/ui/PublicationCard";
+import { ImageUpload } from "@/components/ui/ImageUpload";
 import { TYPE_LABELS } from "@/lib/utils";
-import { usePublications, useCreatePublication, useDashboardProjects, useDeletePublication, useProject } from "@/lib/hooks/useQueries";
+import { usePublications, useCreatePublication, useDashboardProjects, useDeletePublication } from "@/lib/hooks/useQueries";
 import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
 import type { PublicationType } from "@/types";
@@ -40,7 +41,6 @@ function FormArticle({ form, set, projects }: any) {
       <FieldGroup label="Título" required><input className={inp} value={form.title} onChange={e => set({ ...form, title: e.target.value })} placeholder="Título do artigo" /></FieldGroup>
       <FieldGroup label="Ano" required><input type="number" min="1900" max="2100" className={inp} value={form.year} onChange={e => set({ ...form, year: e.target.value })} /></FieldGroup>
       <FieldGroup label="Resumo / Abstract" required><textarea rows={3} className={cn(ta, "md:col-span-2")} value={form.abstract} onChange={e => set({ ...form, abstract: e.target.value })} placeholder="Descreva o conteúdo e contribuições..." /></FieldGroup>
-      <FieldGroup label="Autores (nomes separados por vírgula)"><input className={inp} value={form.authors} onChange={e => set({ ...form, authors: e.target.value })} placeholder="Ex: João Silva, Maria Santos" /></FieldGroup>
       <FieldGroup label="Projeto vinculado" required>
         <select className={sel} value={form.projectId} onChange={e => set({ ...form, projectId: e.target.value })}>
           <option value="">Selecione um projeto</option>
@@ -50,7 +50,7 @@ function FormArticle({ form, set, projects }: any) {
       <FieldGroup label="Revista / Evento"><input className={inp} value={form.journal} onChange={e => set({ ...form, journal: e.target.value })} placeholder="Ex: IEEE Transactions, SBRC 2024" /></FieldGroup>
       <FieldGroup label="DOI"><input className={inp} value={form.doi} onChange={e => set({ ...form, doi: e.target.value })} placeholder="10.xxxx/xxxxx" /></FieldGroup>
       <FieldGroup label="Link Zenodo"><input className={inp} value={form.zenodoLink} onChange={e => set({ ...form, zenodoLink: e.target.value })} placeholder="https://zenodo.org/..." /></FieldGroup>
-      <FieldGroup label="Palavras-chave (separadas por vírgula)"><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Ex: iot, machine learning" /></FieldGroup>
+      <FieldGroup label="Palavras-chave (separadas por ponto)"><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Ex: iot. machine learning" /></FieldGroup>
     </div>
   );
 }
@@ -62,7 +62,6 @@ function FormReport({ form, set, projects }: any) {
       <FieldGroup label="Ano" required><input type="number" min="1900" max="2100" className={inp} value={form.year} onChange={e => set({ ...form, year: e.target.value })} /></FieldGroup>
       <FieldGroup label="Resumo" required><textarea rows={3} className={ta} value={form.abstract} onChange={e => set({ ...form, abstract: e.target.value })} placeholder="Descreva o conteúdo..." /></FieldGroup>
       <div className="flex flex-col gap-4">
-        <FieldGroup label="Autores *"><input className={inp} value={form.authors} onChange={e => set({ ...form, authors: e.target.value })} placeholder="Nomes separados por vírgula" /></FieldGroup>
         <FieldGroup label="Projeto vinculado" required>
           <select className={sel} value={form.projectId} onChange={e => set({ ...form, projectId: e.target.value })}>
             <option value="">Selecione um projeto</option>
@@ -84,7 +83,7 @@ function FormReport({ form, set, projects }: any) {
       <FieldGroup label="Instituição"><input className={inp} value={form.institution} onChange={e => set({ ...form, institution: e.target.value })} placeholder="Nome da instituição" /></FieldGroup>
       <FieldGroup label="Link do PDF / Arquivo"><input className={inp} value={form.zenodoLink} onChange={e => set({ ...form, zenodoLink: e.target.value })} placeholder="https://..." /></FieldGroup>
       <FieldGroup label="DOI (se publicado)"><input className={inp} value={form.doi} onChange={e => set({ ...form, doi: e.target.value })} placeholder="10.xxxx/xxxxx" /></FieldGroup>
-      <FieldGroup label="Palavras-chave"><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Separadas por vírgula" /></FieldGroup>
+      <FieldGroup label="Palavras-chave"><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Separadas por ponto" /></FieldGroup>
     </div>
   );
 }
@@ -96,10 +95,9 @@ function FormPresentation({ form, set, projects }: any) {
       <FieldGroup label="Data" required><input type="date" className={inp} value={form.eventDate} onChange={e => set({ ...form, eventDate: e.target.value })} /></FieldGroup>
       <FieldGroup label="Resumo" required><textarea rows={3} className={ta} value={form.abstract} onChange={e => set({ ...form, abstract: e.target.value })} placeholder="Descreva o conteúdo..." /></FieldGroup>
       <div className="flex flex-col gap-4">
-        <FieldGroup label="Apresentadores *"><input className={inp} value={form.authors} onChange={e => set({ ...form, authors: e.target.value })} placeholder="Nomes separados por vírgula" /></FieldGroup>
         <FieldGroup label="Evento *"><input className={inp} value={form.journal} onChange={e => set({ ...form, journal: e.target.value })} placeholder="Ex: SBRC 2025, TechConf..." /></FieldGroup>
       </div>
-      <FieldGroup label="Projeto vinculado">
+      <FieldGroup label="Projeto vinculado" required>
         <select className={sel} value={form.projectId} onChange={e => set({ ...form, projectId: e.target.value })}>
           <option value="">Selecione um projeto</option>
           {projects.map((p: any) => <option key={p.id} value={p.id}>{p.title}</option>)}
@@ -117,7 +115,7 @@ function FormPresentation({ form, set, projects }: any) {
       <FieldGroup label="Carga horária (horas)"><input type="number" min="0" className={inp} value={form.workload} onChange={e => set({ ...form, workload: e.target.value })} placeholder="Ex: 4" /></FieldGroup>
       <FieldGroup label="Link do arquivo (PDF/PPT)"><input className={inp} value={form.zenodoLink} onChange={e => set({ ...form, zenodoLink: e.target.value })} placeholder="https://..." /></FieldGroup>
       <FieldGroup label="Link do certificado"><input className={inp} value={form.certificate} onChange={e => set({ ...form, certificate: e.target.value })} placeholder="https://..." /></FieldGroup>
-      <FieldGroup label="Tags"><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Separadas por vírgula" /></FieldGroup>
+      <FieldGroup label="Tags"><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Separadas por ponto" /></FieldGroup>
     </div>
   );
 }
@@ -129,13 +127,12 @@ function FormThesis({ form, set, projects }: any) {
       <FieldGroup label="Ano" required><input type="number" min="1900" max="2100" className={inp} value={form.year} onChange={e => set({ ...form, year: e.target.value })} /></FieldGroup>
       <FieldGroup label="Resumo" required><textarea rows={3} className={ta} value={form.abstract} onChange={e => set({ ...form, abstract: e.target.value })} placeholder="Descreva o conteúdo e contribuições..." /></FieldGroup>
       <div className="flex flex-col gap-4">
-        <FieldGroup label="Autor *"><input className={inp} value={form.authors} onChange={e => set({ ...form, authors: e.target.value })} placeholder="Nome do autor" /></FieldGroup>
         <FieldGroup label="Orientador *"><input className={inp} value={form.advisor} onChange={e => set({ ...form, advisor: e.target.value })} placeholder="Nome do orientador" /></FieldGroup>
       </div>
       <FieldGroup label="Curso *"><input className={inp} value={form.course} onChange={e => set({ ...form, course: e.target.value })} placeholder="Ex: Engenharia de Computação" /></FieldGroup>
       <FieldGroup label="Instituição *"><input className={inp} value={form.institution} onChange={e => set({ ...form, institution: e.target.value })} placeholder="Nome da universidade/faculdade" /></FieldGroup>
       <FieldGroup label="Área de pesquisa *"><input className={inp} value={form.researchArea} onChange={e => set({ ...form, researchArea: e.target.value })} placeholder="Ex: Inteligência Artificial" /></FieldGroup>
-      <FieldGroup label="Projeto vinculado">
+      <FieldGroup label="Projeto vinculado" required>
         <select className={sel} value={form.projectId} onChange={e => set({ ...form, projectId: e.target.value })}>
           <option value="">Selecione um projeto</option>
           {projects.map((p: any) => <option key={p.id} value={p.id}>{p.title}</option>)}
@@ -148,7 +145,7 @@ function FormThesis({ form, set, projects }: any) {
       <FieldGroup label="Link do PDF (arquivo final)"><input className={inp} value={form.zenodoLink} onChange={e => set({ ...form, zenodoLink: e.target.value })} placeholder="https://..." /></FieldGroup>
       <FieldGroup label="DOI (se publicado)"><input className={inp} value={form.doi} onChange={e => set({ ...form, doi: e.target.value })} placeholder="10.xxxx/xxxxx" /></FieldGroup>
       <FieldGroup label="Repositório GitHub"><input className={inp} value={form.github} onChange={e => set({ ...form, github: e.target.value })} placeholder="https://github.com/..." /></FieldGroup>
-      <FieldGroup label="Palavras-chave" required><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Separadas por vírgula" /></FieldGroup>
+      <FieldGroup label="Palavras-chave" required><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Separadas por ponto" /></FieldGroup>
     </div>
   );
 }
@@ -187,18 +184,30 @@ export default function PublicacoesPage() {
   const [formError, setFormError]   = useState("");
   const [selectedAuthors, setSelectedAuthors] = useState<any[]>([]);
 
-  const { data: publications = [], isLoading, isError } = usePublications();
+  const {
+    data: pubData,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = usePublications();
   const { data: myProjectsRaw = [] } = useDashboardProjects(isAuthenticated);
   const createMutation = useCreatePublication();
   const deleteMutation = useDeletePublication();
 
+  // Achata as páginas do infinite query num array único
+  const publications = useMemo(
+    () => pubData?.pages.flatMap((p) => p.data) ?? [],
+    [pubData],
+  );
+
   // Busca membros do projeto selecionado para o author picker
-  const { data: selectedProject } = useProject(form.projectId || "");
 
   // Filtra só projetos do usuário para o formulário
   const myProjects = Array.isArray(myProjectsRaw) ? myProjectsRaw : [];
 
-  // IDs dos projetos onde o usuário é dono ou membro (para verificar permissão de excluir publicação)
+  // IDs dos projetos onde o usuário é dono ou membro
   const myProjectIds = useMemo(() => new Set(myProjects.map((p: any) => p.id)), [myProjects]);
 
   const filtered = useMemo(() => {
@@ -215,12 +224,12 @@ export default function PublicacoesPage() {
     if (type !== "all") result = result.filter(p => p.type === type);
     if (year !== "all") result = result.filter(p => String(p.year) === year);
     return result;
-  }, [publications, search, type, year]);
+  }, [publications, debouncedSearch, type, year]);
 
-const yearOptions = useMemo(() => {
-  const years = [...new Set(publications.map(p => String(p.year)))].sort((a, b) => Number(b) - Number(a));
-  return [{ value: "all", label: "Todos os anos" }, ...years.map(y => ({ value: y, label: y }))];
-}, [publications]);
+  const yearOptions = useMemo(() => {
+    const years = [...new Set(publications.map(p => String(p.year)))].sort((a, b) => Number(b) - Number(a));
+    return [{ value: "all" as string, label: "Todos os anos" }, ...years.map(y => ({ value: y as string, label: y }))];
+  }, [publications]);
 
   const countByType = useMemo(() =>
     publications.reduce((acc: Record<string, number>, p) => { acc[p.type] = (acc[p.type] ?? 0) + 1; return acc; }, {}),
@@ -255,7 +264,6 @@ const yearOptions = useMemo(() => {
       if (form.grade)        extras.push(`Nota: ${form.grade}`);
       if (form.github)       extras.push(`GitHub: ${form.github}`);
     }
-    if (form.authors) extras.push(`Autores: ${form.authors}`);
     return extras.length > 0 ? `${abs}\n\n---\n${extras.join(" | ")}` : abs;
   };
 
@@ -366,15 +374,19 @@ const yearOptions = useMemo(() => {
             {pubType === "THESIS"       && <FormThesis       form={form} set={setForm} projects={myProjects} />}
 
             {/* ── Author Picker (membros do projeto selecionado) ── */}
-            {form.projectId && selectedProject?.members?.length > 0 && (
+            {/* ── Author Picker (membros do projeto selecionado) ── */}
+            {(() => {
+              const selectedProjectMembers = (myProjects.find((p: any) => p.id === form.projectId) as any)?.members ?? [];
+              if (!form.projectId || selectedProjectMembers.length === 0) return null;
+              return (
               <div className="mt-5 pt-4 border-t border-neutral-100 dark:border-neutral-700">
                 <div className="flex items-center gap-2 mb-2">
                   <UserPlus size={14} className="text-emerald-600" />
                   <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Selecionar autores do projeto</p>
                 </div>
-                <p className="text-xs text-neutral-400 mb-3">Clique nos membros para adicioná-los como autores. Você ainda pode digitar nomes manualmente no campo acima.</p>
+                <p className="text-xs text-neutral-400 mb-3">Clique nos membros do projeto para adicioná-los como autores.</p>
                 <div className="flex flex-wrap gap-2">
-                  {(selectedProject.members ?? []).map((m: any) => {
+                  {selectedProjectMembers.map((m: any) => {
                     const isSelected = selectedAuthors.some((a: any) => a.id === m.id);
                     return (
                       <button
@@ -406,7 +418,8 @@ const yearOptions = useMemo(() => {
                   </p>
                 )}
               </div>
-            )}
+              );
+            })()}
 
             {/* ── Conteúdo completo + Imagens (comum a todos os tipos) ── */}
             <div className="mt-5 pt-4 border-t border-neutral-100 dark:border-neutral-700 grid gap-4">
@@ -420,15 +433,86 @@ const yearOptions = useMemo(() => {
                 />
                 <p className="text-xs text-neutral-400 mt-1">Este texto aparecerá na página de detalhe, abaixo do resumo. Use <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded text-[11px]">![descrição](url)</code> para imagens inline.</p>
               </FieldGroup>
-              <FieldGroup label="URLs de imagens (uma por linha, opcional)">
-                <textarea
-                  rows={3}
-                  className={ta}
-                  value={form.images}
-                  onChange={e => setForm({ ...form, images: e.target.value })}
-                  placeholder={"https://exemplo.com/imagem1.png\nhttps://exemplo.com/imagem2.jpg"}
-                />
-                <p className="text-xs text-neutral-400 mt-1">Imagens exibidas na página de detalhe. Prefira usar imagens inline no texto acima.</p>
+              <FieldGroup label="Imagens (opcional)">
+                <div className="flex flex-col gap-2">
+                  {/* Upload de arquivo */}
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="flex-1 cursor-pointer rounded-xl border-2 border-dashed border-neutral-300 dark:border-neutral-600 hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/20 px-4 py-2.5 text-center transition-all text-sm text-neutral-500 dark:text-neutral-400"
+                      onClick={() => {
+                        const input = document.createElement("input");
+                        input.type = "file";
+                        input.accept = "image/*";
+                        input.onchange = async (e: any) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const fd = new FormData();
+                          fd.append("file", file);
+                          fd.append("upload_preset", "labex_uploads");
+                          fd.append("cloud_name", "dbsn1ch65");
+                          try {
+                            const res = await fetch("https://api.cloudinary.com/v1_1/dbsn1ch65/image/upload", { method: "POST", body: fd });
+                            const data = await res.json();
+                            if (data.secure_url) {
+                              const existing = form.images ? form.images.split("\n").filter(Boolean) : [];
+                              setForm({ ...form, images: [...existing, data.secure_url].join("\n") });
+                            }
+                          } catch {}
+                        };
+                        input.click();
+                      }}
+                    >
+                      Clique para fazer upload de imagem
+                    </div>
+                  </div>
+                  {/* URL manual */}
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      placeholder="Ou cole uma URL de imagem..."
+                      className={cn(inp, "flex-1")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const val = (e.target as HTMLInputElement).value.trim();
+                          if (val) {
+                            const existing = form.images ? form.images.split("\n").filter(Boolean) : [];
+                            if (!existing.includes(val)) setForm({ ...form, images: [...existing, val].join("\n") });
+                            (e.target as HTMLInputElement).value = "";
+                          }
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="px-3 py-1.5 rounded-xl bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 transition-all"
+                      onClick={(e) => {
+                        const input = (e.currentTarget.previousSibling as HTMLInputElement);
+                        const val = input?.value.trim();
+                        if (val) {
+                          const existing = form.images ? form.images.split("\n").filter(Boolean) : [];
+                          if (!existing.includes(val)) setForm({ ...form, images: [...existing, val].join("\n") });
+                          input.value = "";
+                        }
+                      }}
+                    >Adicionar</button>
+                  </div>
+                </div>
+                {/* Preview das imagens adicionadas */}
+                {form.images && form.images.split("\n").filter(Boolean).length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {form.images.split("\n").filter(Boolean).map((url, i) => (
+                      <div key={i} className="relative group">
+                        <img src={url} alt="" className="w-16 h-16 rounded-lg object-cover border border-neutral-200 dark:border-neutral-700" />
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, images: form.images.split("\n").filter((_, j) => j !== i).join("\n") })}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-danger-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </FieldGroup>
               <FieldGroup label="Referências bibliográficas (uma por linha, opcional)">
                 <textarea
@@ -511,24 +595,39 @@ const yearOptions = useMemo(() => {
         <EmptyState icon={<BookOpen size={24} />} title="Nenhuma publicação encontrada" description="Tente outros termos de busca ou remova os filtros."
           action={<Button variant="secondary" size="sm" onClick={() => { setSearch(""); setType("all"); setYear("all"); }}>Limpar filtros</Button>} />
       ) : (
-        <div className="grid md:grid-cols-2 gap-5">
-          {filtered.map(pub => {
+        <>
+          <div className="grid md:grid-cols-2 gap-5">
+            {filtered.map(pub => {
             const raw = pub as any;
             const isAuthor = isAuthenticated && user?.id && pub.authors?.some((a: any) => a.id === user.id);
             const isProjectOwner = isAuthenticated && user?.id && (raw.project?.ownerId === user.id || raw.project?.professorId === user.id || raw.project?.professor?.id === user.id);
             const isCreator = isAuthenticated && user?.id && (raw.userId === user.id || raw.createdBy === user.id || raw.authorId === user.id);
             return (
-              <PublicationCard
-                key={pub.id}
-                publication={pub}
-                canDelete={!!(isAuthor || isProjectOwner || isCreator)}
-                canEdit={!!(isAuthor || isProjectOwner || isCreator)}
-                onDelete={(id) => deleteMutation.mutate(id)}
-                isDeleting={deleteMutation.isPending}
-              />
+              <div key={pub.id} className="relative">
+                {(pub as any).approved === false && (isAuthor || isCreator) && (
+                  <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold">
+                    <Clock size={11} /> Aguardando aprovação
+                  </div>
+                )}
+                <PublicationCard
+                  publication={pub}
+                  canDelete={!!(isAuthor || isProjectOwner || isCreator)}
+                  canEdit={!!(isAuthor || isProjectOwner || isCreator)}
+                  onDelete={(id) => deleteMutation.mutate(id)}
+                  isDeleting={deleteMutation.isPending}
+                />
+              </div>
             );
           })}
-        </div>
+          </div>
+          {hasNextPage && (
+            <div className="flex justify-center mt-8">
+              <Button variant="secondary" onClick={() => fetchNextPage()} loading={isFetchingNextPage} className="min-w-40">
+                {isFetchingNextPage ? <><Loader2 size={14} className="animate-spin" /> Carregando...</> : "Carregar mais"}
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

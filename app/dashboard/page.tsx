@@ -1,22 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import NextImage from "next/image";
 import {
   ArrowRight, Bell, BookmarkCheck, CheckCircle2, Clock,
   FlaskConical, LayoutDashboard, Loader2, PlusCircle, Settings,
-  Trash2, Users, XCircle, Pencil, X, Check,
+  Trash2, Users, XCircle, Pencil, X, Check, BookOpen, ExternalLink, MessageSquare,
 } from "lucide-react";
 import { Badge, Avatar, Button, Skeleton } from "@/components/ui";
 import { ProjectCard } from "@/components/ui/ProjectCard";
 import { useAuth } from "@/contexts/auth";
 import {
-  useDashboardStats, useDashboardProjects, useDashboardRequests,
-  useDashboardPendingRequests, useDashboardSubscriptions,
+  useDashboardOverview, useApprovePublication, useNotificationSummary,
+  usePendingPublications as usePendingPublicationsHook,
+  useRejectPublication,
   useReviewRequest, useCancelRequest, useDeleteProject,
 } from "@/lib/hooks/useQueries";
+import { adaptProject, adaptRequest } from "@/lib/adapters";
 import { cn } from "@/lib/utils";
 
 type Tab = "overview" | "projects" | "requests" | "subscriptions";
@@ -27,8 +29,65 @@ const REQ_STATUS: Record<string, { label: string; variant: "success"|"warning"|"
   rejected: { label: "Recusado",   variant: "danger",  icon: XCircle,      color: "text-danger-500"  },
 };
 
+
+/* ── Componente: publicações pendentes por projeto ── */
+function PendingPublicationsSection({
+  projectId, projectTitle, onApprove, onReject, isApproving, isRejecting,
+}: {
+  projectId: string;
+  projectTitle: string;
+  onApprove: (id: string) => void;
+  onReject: (id: string, reason?: string) => void;
+  isApproving: boolean;
+  isRejecting: boolean;
+}) {
+  const { data: pubs = [] } = usePendingPublicationsHook(projectId);
+  if (pubs.length === 0) return null;
+  return (
+    <div className="mb-4">
+      <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-2">{projectTitle}</p>
+      {pubs.map((pub: any) => (
+        <div key={pub.id} className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 mb-2">
+          <div className="flex-1 min-w-0">
+            <Link
+              href={`/publicacoes/${pub.id}`}
+              target="_blank"
+              className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 hover:text-brand-600 transition-colors truncate block"
+            >
+              {pub.title} <ExternalLink size={10} className="inline ml-0.5 opacity-50" />
+            </Link>
+            <p className="text-[11px] text-neutral-400 mt-0.5">
+              {pub.authors?.map((a: any) => a.name).join(", ") || pub.user?.name || "Sem autor"} · {pub.year}
+            </p>
+          </div>
+          <div className="flex gap-1.5 flex-shrink-0">
+            <button
+              onClick={() => onApprove(pub.id)}
+              disabled={isApproving || isRejecting}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-all disabled:opacity-50"
+            >
+              <Check size={12} /> Aprovar
+            </button>
+            <button
+              onClick={() => {
+                const reason = window.prompt("Motivo da recusa (opcional):");
+                onReject(pub.id, reason ?? undefined);
+              }}
+              disabled={isApproving || isRejecting}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-danger-500 text-white text-xs font-semibold hover:bg-danger-600 transition-all disabled:opacity-50"
+            >
+              <XCircle size={12} /> Recusar
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
-  const [tab, setTab] = useState<Tab>("overview");
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<Tab>((searchParams.get("tab") as Tab) ?? "overview");
   const { user, isAuthenticated, isLoading: authLoading, updateProfile } = useAuth();
   const router = useRouter();
 
@@ -39,15 +98,21 @@ export default function DashboardPage() {
     name: "", department: "", institution: "", avatar: "", bio: "", linkedin: "",
   });
 
-  const { data: stats }            = useDashboardStats();
-  const { data: myProjects = [] }  = useDashboardProjects();
-  const { data: myRequests = [] }  = useDashboardRequests();
-  const { data: pendingReqs = [] } = useDashboardPendingRequests();
-  const { data: subscriptions = [] } = useDashboardSubscriptions();
+  // ✅ 1 request em vez de 5
+  const { data: overview, isLoading: overviewLoading } = useDashboardOverview();
+  const { data: notifSummary } = useNotificationSummary(isAuthenticated);
 
-  const reviewMut  = useReviewRequest();
-  const cancelMut  = useCancelRequest();
-  const deleteMut  = useDeleteProject();
+  const stats         = overview?.stats;
+  const myProjects    = (overview?.projects       ?? []).map(adaptProject);
+  const myRequests    = (overview?.requests        ?? []).map(adaptRequest);
+  const pendingReqs   = (overview?.pendingRequests ?? []).map(adaptRequest);
+  const subscriptions = overview?.subscriptions ?? [];
+
+  const reviewMut     = useReviewRequest();
+  const cancelMut     = useCancelRequest();
+  const deleteMut     = useDeleteProject();
+  const approvePubMut = useApprovePublication();
+  const rejectPubMut  = useRejectPublication();
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/auth/login");
@@ -93,6 +158,10 @@ export default function DashboardPage() {
   };
 
   const ownedProjects  = myProjects.filter((p: any) => p.isOwner);
+  const isProfessor    = user?.role === "professor";
+  const suggestionNotifs = (notifSummary?.systemNotifications ?? []).filter(
+    (n: any) => n.type === "PUBLICATION_SUGGESTION" && !n.read
+  );
   const memberProjects = myProjects.filter((p: any) => !p.isOwner);
   const pendingCount   = pendingReqs.length;
 
@@ -146,6 +215,7 @@ export default function DashboardPage() {
               >
                 <Settings size={17} />
               </Link>
+              {isProfessor && (
               <Link href="/projetos/novo" className="flex-1 sm:flex-none">
                 <Button size="sm" className="w-full sm:w-auto">
                   <PlusCircle size={14} />
@@ -153,6 +223,7 @@ export default function DashboardPage() {
                   <span className="xs:hidden sm:hidden">Criar</span>
                 </Button>
               </Link>
+              )}
             </div>
           </div>
         ) : (
@@ -299,12 +370,40 @@ export default function DashboardPage() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-display font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200">Solicitações pendentes</h3>
-                  {pendingCount > 0 && (
+                  {(pendingCount + suggestionNotifs.length) > 0 && (
                     <button onClick={() => setTab("requests")} className="text-xs font-semibold text-brand-600 hover:text-brand-800 flex items-center gap-1">
                       Ver todas <ArrowRight size={12} />
                     </button>
                   )}
                 </div>
+
+                {/* Sugestões do professor (aluno) */}
+                {!isProfessor && suggestionNotifs.slice(0, 2).map((notif: any) => {
+                  const pubIdMatch = notif.message?.match(/\[pubId:([^\]]+)\]/);
+                  const pubId      = pubIdMatch?.[1];
+                  const titleMatch = notif.message?.match(/publicação "([^"]+)"/);
+                  const pubTitle   = titleMatch?.[1] ?? "Publicação";
+                  return (
+                    <div key={notif.id} className="flex items-center gap-2 sm:gap-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 mb-2">
+                      <div className="w-7 h-7 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center flex-shrink-0">
+                        <MessageSquare size={13} className="text-amber-700 dark:text-amber-300" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate">{pubTitle}</p>
+                        <p className="text-[11px] text-amber-600 dark:text-amber-400">Sugestão do professor</p>
+                      </div>
+                      <Link
+                        href={pubId ? `/publicacoes/${pubId}/editar` : "/publicacoes"}
+                        className="p-1.5 rounded-lg bg-brand-600 text-white hover:bg-brand-700 hover:scale-110 transition-all duration-150 shadow-sm flex-shrink-0"
+                        title="Revisar"
+                      >
+                        <Pencil size={14} />
+                      </Link>
+                    </div>
+                  );
+                })}
+
+                {/* Solicitações de entrada */}
                 {pendingReqs.slice(0, 3).map((req: any) => (
                   <div key={req.id} className="flex items-center gap-2 sm:gap-3 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-700/50 border border-neutral-100 dark:border-neutral-700 mb-2">
                     <Avatar name={req.user?.name ?? "?"} size="sm" src={req.user?.avatar} />
@@ -328,12 +427,28 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ))}
-                {pendingReqs.length === 0 && (
+
+                {/* Publicações pendentes de aprovação (professor) */}
+                {isProfessor && ownedProjects.slice(0, 2).map((proj: any) => (
+                  <PendingPublicationsSection
+                    key={proj.id}
+                    projectId={proj.id}
+                    projectTitle={proj.title}
+                    onApprove={(id) => approvePubMut.mutate(id)}
+                    onReject={(id, reason) => rejectPubMut.mutate({ id, reason })}
+                    isApproving={approvePubMut.isPending}
+                    isRejecting={rejectPubMut.isPending}
+                  />
+                ))}
+
+                {pendingReqs.length === 0 && suggestionNotifs.length === 0 && !(isProfessor && ownedProjects.length > 0) && (
                   <p className="text-sm text-neutral-400 py-6 text-center">Nenhuma solicitação pendente.</p>
                 )}
               </div>
             </div>
           )}
+
+
 
           {/* ── PROJETOS ── */}
           {tab === "projects" && (
@@ -375,7 +490,7 @@ export default function DashboardPage() {
                   <FlaskConical size={28} className="text-neutral-200 mx-auto mb-3" />
                   <p className="text-neutral-500 mb-4 text-sm">Você ainda não tem projetos.</p>
                   <div className="flex flex-col xs:flex-row justify-center gap-2 sm:gap-3">
-                    <Link href="/projetos/novo"><Button size="sm"><PlusCircle size={14} /> Criar projeto</Button></Link>
+                    {isProfessor && <Link href="/projetos/novo"><Button size="sm"><PlusCircle size={14} /> Criar projeto</Button></Link>}
                     <Link href="/projetos"><Button variant="secondary" size="sm">Explorar projetos</Button></Link>
                   </div>
                 </div>
@@ -387,49 +502,110 @@ export default function DashboardPage() {
           {tab === "requests" && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
 
-              {/* Recebidas */}
-              <div>
-                <h3 className="font-display font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200 mb-3 sm:mb-4">Solicitações recebidas</h3>
-                {pendingReqs.length === 0 ? (
-                  <p className="text-sm text-neutral-400 py-6 text-center border border-dashed border-neutral-200 dark:border-neutral-700 rounded-xl">
-                    Nenhuma solicitação pendente nos seus projetos.
-                  </p>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    {pendingReqs.map((req: any) => (
-                      <div key={req.id} className="p-3 sm:p-4 bg-neutral-50 dark:bg-neutral-700/50 rounded-2xl border border-neutral-200 dark:border-neutral-700">
-                        <div className="flex items-center gap-2 sm:gap-3 mb-2">
-                          <Avatar name={req.user?.name ?? "?"} size="sm" src={req.user?.avatar} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate">{req.user?.name}</p>
-                            <p className="text-xs text-neutral-400 truncate">{req.project?.title}</p>
+              {/* Coluna esquerda: recebidas + sugestões do professor (aluno) + publicações pendentes (professor) */}
+              <div className="flex flex-col gap-6">
+
+                {/* Solicitações pendentes de entrada no projeto */}
+                <div>
+                  <h3 className="font-display font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200 mb-3 sm:mb-4">Solicitações pendentes</h3>
+                  {pendingReqs.length === 0 && suggestionNotifs.length === 0 && !(isProfessor && ownedProjects.length > 0) && (
+                    <p className="text-sm text-neutral-400 py-6 text-center border border-dashed border-neutral-200 dark:border-neutral-700 rounded-xl">
+                      Nenhuma solicitação pendente.
+                    </p>
+                  )}
+                  {pendingReqs.length > 0 && (
+                    <div className="flex flex-col gap-3">
+                      {pendingReqs.map((req: any) => (
+                        <div key={req.id} className="p-3 sm:p-4 bg-neutral-50 dark:bg-neutral-700/50 rounded-2xl border border-neutral-200 dark:border-neutral-700">
+                          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                            <Avatar name={req.user?.name ?? "?"} size="sm" src={req.user?.avatar} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate">{req.user?.name}</p>
+                              <p className="text-xs text-neutral-400 truncate">{req.project?.title}</p>
+                            </div>
+                            <Badge variant="warning" className="flex-shrink-0">Pendente</Badge>
                           </div>
-                          <Badge variant="warning" className="flex-shrink-0">Pendente</Badge>
+                          {req.message && (
+                            <p className="text-xs text-neutral-600 dark:text-neutral-300 bg-white dark:bg-neutral-800 rounded-lg p-2 border border-neutral-100 dark:border-neutral-700 mb-3 italic line-clamp-3">
+                              "{req.message}"
+                            </p>
+                          )}
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="success" className="flex-1" loading={reviewMut.isPending} onClick={() => reviewMut.mutate({ id: req.id, status: "APPROVED" })}>
+                              <CheckCircle2 size={13} /> Aprovar
+                            </Button>
+                            <Button size="sm" variant="danger" className="flex-1" loading={reviewMut.isPending} onClick={() => reviewMut.mutate({ id: req.id, status: "REJECTED" })}>
+                              <XCircle size={13} /> Rejeitar
+                            </Button>
+                          </div>
                         </div>
-                        {req.message && (
-                          <p className="text-xs text-neutral-600 dark:text-neutral-300 bg-white dark:bg-neutral-800 rounded-lg p-2 border border-neutral-100 dark:border-neutral-700 mb-3 italic line-clamp-3">
-                            "{req.message}"
-                          </p>
-                        )}
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="success" className="flex-1"
-                            loading={reviewMut.isPending}
-                            onClick={() => reviewMut.mutate({ id: req.id, status: "APPROVED" })}>
-                            <CheckCircle2 size={13} /> Aprovar
-                          </Button>
-                          <Button size="sm" variant="danger" className="flex-1"
-                            loading={reviewMut.isPending}
-                            onClick={() => reviewMut.mutate({ id: req.id, status: "REJECTED" })}>
-                            <XCircle size={13} /> Rejeitar
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Publicações pendentes de aprovação (professor) */}
+                {isProfessor && ownedProjects.map((proj: any) => (
+                  <PendingPublicationsSection
+                    key={proj.id}
+                    projectId={proj.id}
+                    projectTitle={proj.title}
+                    onApprove={(id) => approvePubMut.mutate(id)}
+                    onReject={(id, reason) => rejectPubMut.mutate({ id, reason })}
+                    isApproving={approvePubMut.isPending}
+                    isRejecting={rejectPubMut.isPending}
+                  />
+                ))}
+
+                {/* Sugestões recebidas (aluno) */}
+                {!isProfessor && suggestionNotifs.length > 0 && (
+                  <div>
+                    <h3 className="font-display font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200 mb-3 sm:mb-4 flex items-center gap-2">
+                      <MessageSquare size={15} className="text-amber-600" /> Sugestões do Professor
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-xs font-bold">{suggestionNotifs.length}</span>
+                    </h3>
+                    <div className="flex flex-col gap-3">
+                      {suggestionNotifs.map((notif: any) => {
+                        const pubIdMatch = notif.message?.match(/\[pubId:([^\]]+)\]/);
+                        const pubId      = pubIdMatch?.[1];
+                        const titleMatch = notif.message?.match(/publicação "([^"]+)"/);
+                        const colonIdx   = notif.message?.indexOf('": ');
+                        const rawSugg    = colonIdx > 0 ? notif.message.slice(colonIdx + 3).replace(/\s*\[pubId:[^\]]+\]/, "").replace(/\.\.\.$/,"").trim() : "";
+                        const pubTitle   = titleMatch?.[1] ?? "Publicação";
+                        return (
+                          <div key={notif.id} className="p-3 sm:p-4 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-200 dark:border-amber-800">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-7 h-7 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center flex-shrink-0">
+                                <MessageSquare size={13} className="text-amber-700 dark:text-amber-300" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate">{pubTitle}</p>
+                                <p className="text-xs text-neutral-400">{new Date(notif.createdAt).toLocaleDateString("pt-BR")}</p>
+                              </div>
+                              <Badge variant="warning" className="flex-shrink-0">Revisão</Badge>
+                            </div>
+                            {rawSugg && (
+                              <p className="text-xs text-amber-700 dark:text-amber-300 bg-white dark:bg-neutral-800 rounded-lg p-2 border border-amber-100 dark:border-amber-900 mb-3 italic line-clamp-3">
+                                "{rawSugg}"
+                              </p>
+                            )}
+                            <Link
+                              href={pubId ? `/publicacoes/${pubId}/editar` : "/publicacoes"}
+                              className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 transition-all"
+                            >
+                              <Pencil size={12} /> Revisar publicação
+                            </Link>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
+
+
               </div>
 
-              {/* Enviadas */}
+              {/* Coluna direita: minhas solicitações enviadas */}
               <div>
                 <h3 className="font-display font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200 mb-3 sm:mb-4">Minhas solicitações enviadas</h3>
                 {myRequests.length === 0 ? (
@@ -446,19 +622,12 @@ export default function DashboardPage() {
                         <div key={req.id} className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-neutral-50 dark:bg-neutral-700/50 rounded-2xl border border-neutral-200 dark:border-neutral-700">
                           <Icon size={16} className={cn(s.color, "flex-shrink-0")} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate">
-                              {req.project?.title ?? "Projeto"}
-                            </p>
-                            <p className="text-xs text-neutral-400">
-                              {new Date(req.createdAt).toLocaleDateString("pt-BR")}
-                            </p>
+                            <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate">{req.project?.title ?? "Projeto"}</p>
+                            <p className="text-xs text-neutral-400">{new Date(req.createdAt).toLocaleDateString("pt-BR")}</p>
                           </div>
                           <Badge variant={s.variant} className="flex-shrink-0">{s.label}</Badge>
                           {req.status === "pending" && (
-                            <button
-                              onClick={() => cancelMut.mutate(req.id)}
-                              className="p-1.5 rounded-lg text-neutral-400 hover:text-danger-500 hover:bg-danger-50 transition-all flex-shrink-0"
-                            >
+                            <button onClick={() => cancelMut.mutate(req.id)} className="p-1.5 rounded-lg text-neutral-400 hover:text-danger-500 hover:bg-danger-50 transition-all flex-shrink-0">
                               <XCircle size={14} />
                             </button>
                           )}

@@ -13,13 +13,12 @@ import { useAuth } from "@/contexts/auth";
 import { AREA_LABELS, cn } from "@/lib/utils";
 import { usersApi } from "@/lib/api/axios";
 
-const CATEGORIES = [
-  { value: "MACRO_CAD",  label: "Macro CAD"  },
-  { value: "METROLOGIA", label: "Metrologia" },
-  { value: "OUTRO",      label: "Outro"      },
-];
-
-const AREA_KEYS = ["technology","health","education","environment","law","arts","engineering","social"] as const;
+const AREA_KEYS = [
+  "controle_sistemas", "sistemas_mecatronicos", "acionamentos_eletricos",
+  "sistemas_inteligentes", "robotica_industrial", "automacao_mecanica",
+  "automacao_eletrica", "engenharia_projeto", "manufatura_digital",
+  "projeto_computador", "simulacao_computacional",
+] as const;
 
 const Field = ({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) => (
   <div className="flex flex-col gap-1.5">
@@ -39,29 +38,26 @@ export default function NovoProjetoPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const createMutation = useCreateProject();
-  const [memberSearch, setMemberSearch]   = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [searching, setSearching]         = useState(false);
+  const [memberSearch, setMemberSearch]       = useState("");
+  const [searchResults, setSearchResults]     = useState<any[]>([]);
+  const [searching, setSearching]             = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<any[]>([]);
-  const [apiError, setApiError]           = useState("");
-  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
-  const [customCategory, setCustomCategory] = useState("");
+  const [apiError, setApiError]               = useState("");
+  const [selectedAreas, setSelectedAreas]     = useState<string[]>([]);
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<ProjectSchema>({
     resolver: zodResolver(projectSchema),
-    defaultValues: { vacancies: 5, custo: 0, category: "OUTRO" },
+    defaultValues: { vacancies: 5, custo: 0 },
   });
 
-  const currentVacancies = Number(watch("vacancies")) || 1;
-  // O criador já ocupa 1 vaga, então restam (vacancies - 1) para membros extras
-  const maxExtraMembers  = Math.max(0, currentVacancies - 1);
+  const currentVacancies   = Number(watch("vacancies")) || 1;
+  const maxExtraMembers    = Math.max(0, currentVacancies - 1);
   const memberLimitReached = selectedMembers.length >= maxExtraMembers;
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.push("/auth/login");
   }, [isLoading, isAuthenticated, router]);
 
-  // Busca de usuários para adicionar como membros
   useEffect(() => {
     if (memberSearch.length < 2) { setSearchResults([]); return; }
     const t = setTimeout(async () => {
@@ -84,8 +80,6 @@ export default function NovoProjetoPage() {
     });
   };
 
-  const watchCategory = watch("category");
-
   const addMember = (member: any) => {
     if (selectedMembers.length >= maxExtraMembers) return;
     if (!selectedMembers.find((m) => m.id === member.id)) {
@@ -100,15 +94,16 @@ export default function NovoProjetoPage() {
     try {
       setApiError("");
       if (selectedAreas.length === 0) { setApiError("Selecione pelo menos uma área temática."); return; }
-      const finalCategory = data.category === "OUTRO" && customCategory.trim()
-        ? customCategory.trim()
-        : data.category || "OUTRO";
+      const totalMembers = selectedMembers.length + 1;
+      if (totalMembers > Number(data.vacancies)) {
+        setApiError(`Você adicionou ${selectedMembers.length} membro${selectedMembers.length !== 1 ? "s" : ""} mas definiu apenas ${data.vacancies} vaga${Number(data.vacancies) !== 1 ? "s" : ""}. Aumente as vagas ou remova membros.`);
+        return;
+      }
       await createMutation.mutateAsync({
         title:               data.title,
         description:         data.description,
         area:                selectedAreas[0].toUpperCase(),
         areas:               selectedAreas.map((a) => a.toUpperCase()),
-        category:            finalCategory,
         vacancies:           Number(data.vacancies),
         startDate:           data.startDate           ? new Date(data.startDate).toISOString()           : undefined,
         endDate:             data.endDate             ? new Date(data.endDate).toISOString()             : undefined,
@@ -156,55 +151,36 @@ export default function NovoProjetoPage() {
           <h2 className="font-display font-bold text-neutral-800 dark:text-neutral-200 mb-5">Informações básicas</h2>
           <div className="flex flex-col gap-4">
             <Field label="Título do projeto *" error={errors.title?.message}>
-              <input placeholder="Ex: Monitoramento de Qualidade da Água com IoT" className={inputCls(errors.title?.message)} {...register("title")} />
+              <input placeholder="Ex: Dispositivo de Soldagem de Braço de Suspensão" className={inputCls(errors.title?.message)} {...register("title")} />
             </Field>
             <Field label="Descrição *" error={errors.description?.message}>
               <textarea rows={4} placeholder="Descreva o objetivo, metodologia e impacto esperado..." className={cn("rounded-xl border border-neutral-300 dark:border-neutral-600 p-3 text-sm resize-none outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all bg-white dark:bg-neutral-800 dark:text-neutral-100", errors.description?.message && "border-danger-500")} {...register("description")} />
             </Field>
-            <div className="grid md:grid-cols-2 gap-4">
-              <Field label="Áreas temáticas *" error={selectedAreas.length === 0 && errors.area?.message ? "Selecione pelo menos uma área" : undefined}>
-                <input type="hidden" {...register("area")} />
-                <div className="flex flex-wrap gap-2">
-                  {AREA_KEYS.map((a) => (
-                    <button
-                      key={a}
-                      type="button"
-                      onClick={() => toggleArea(a)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all",
-                        selectedAreas.includes(a)
-                          ? "bg-brand-600 text-white border-brand-600 shadow-sm"
-                          : "bg-white dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-600 hover:border-brand-300 hover:text-brand-600"
-                      )}
-                    >
-                      {AREA_LABELS[a]}
-                    </button>
-                  ))}
-                </div>
-                {selectedAreas.length > 0 && (
-                  <p className="text-xs text-brand-600 mt-1">{selectedAreas.length} área{selectedAreas.length !== 1 ? "s" : ""} selecionada{selectedAreas.length !== 1 ? "s" : ""}</p>
-                )}
-              </Field>
-              <div className="flex flex-col gap-4">
-                <Field label="Categoria do lab">
-                  <select className={inputCls()} {...register("category")}>
-                    {CATEGORIES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
-                  </select>
-                </Field>
-                <div className={cn(watchCategory !== "OUTRO" && "hidden")}>
-                  <Field label="Nome da categoria personalizada">
-                    <input
-                      className={inputCls()}
-                      value={customCategory}
-                      onChange={(e) => setCustomCategory(e.target.value)}
-                      placeholder="Ex: Robótica, Bioquímica..."
-                    />
-                  </Field>
-                </div>
+            <Field label="Áreas temáticas *" error={selectedAreas.length === 0 && errors.area?.message ? "Selecione pelo menos uma área" : undefined}>
+              <input type="hidden" {...register("area")} />
+              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
+                {AREA_KEYS.map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => toggleArea(a)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all",
+                      selectedAreas.includes(a)
+                        ? "bg-brand-600 text-white border-brand-600 shadow-sm"
+                        : "bg-white dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-600 hover:border-brand-300 hover:text-brand-600"
+                    )}
+                  >
+                    {AREA_LABELS[a]}
+                  </button>
+                ))}
               </div>
-            </div>
-            <Field label="Tags (separadas por vírgula)">
-              <input placeholder="Ex: arduino, iot, meio ambiente, sensores" className={inputCls()} {...register("tags")} />
+              {selectedAreas.length > 0 && (
+                <p className="text-xs text-brand-600 mt-1">{selectedAreas.length} área{selectedAreas.length !== 1 ? "s" : ""} selecionada{selectedAreas.length !== 1 ? "s" : ""}</p>
+              )}
+            </Field>
+            <Field label="Tags (separadas por ponto)">
+              <input placeholder="Ex: soldagem. mecatrônica. automação" className={inputCls()} {...register("tags")} />
             </Field>
           </div>
         </div>
@@ -272,7 +248,6 @@ export default function NovoProjetoPage() {
             </div>
           )}
 
-          {/* Membros selecionados */}
           {selectedMembers.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-3">
               {selectedMembers.map((m) => (
@@ -314,9 +289,7 @@ export default function NovoProjetoPage() {
             </div>
           )}
 
-          {searching && (
-            <p className="text-xs text-neutral-400 mt-2">Buscando usuários...</p>
-          )}
+          {searching && <p className="text-xs text-neutral-400 mt-2">Buscando usuários...</p>}
         </div>
 
         {/* ── Actions ── */}
