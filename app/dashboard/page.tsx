@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import NextImage from "next/image";
@@ -85,9 +85,8 @@ function PendingPublicationsSection({
   );
 }
 
-export default function DashboardPage() {
-  const searchParams = useSearchParams();
-  const [tab, setTab] = useState<Tab>((searchParams.get("tab") as Tab) ?? "overview");
+function DashboardContent({ initialTab }: { initialTab: string }) {
+  const [tab, setTab] = useState<Tab>((initialTab as Tab) ?? "overview");
   const { user, isAuthenticated, isLoading: authLoading, updateProfile } = useAuth();
   const router = useRouter();
 
@@ -686,5 +685,19 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function DashboardPageInner() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") ?? "overview";
+  return <DashboardContent initialTab={initialTab} />;
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600" /></div>}>
+      <DashboardPageInner />
+    </Suspense>
   );
 }
