@@ -8,13 +8,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
 import { useTheme } from "@/contexts/theme";
-import { useNotificationSummary } from "@/lib/hooks/useQueries";
+import { useNotificationSummary, useMarkNotificationRead, useMarkAllNotificationsRead, useClearAllReadNotifications } from "@/lib/hooks/useQueries";
 
 const NAV = [
   { href: "/",            label: "Início"      },
   { href: "/projetos",    label: "Projetos"    },
   { href: "/publicacoes", label: "Publicações" },
-];
+] as const;
 
 const NOTIF_SEEN_IDS_KEY = "@labativo:notif_seen_ids";
 const NOTIF_DISMISSED_KEY = "@labativo:notif_dismissed_ids";
@@ -43,6 +43,9 @@ function NotificationBell() {
   const ref = useRef<HTMLDivElement>(null);
   // ✅ 1 request em vez de 4
   const { data: summary } = useNotificationSummary(true);
+  const markReadMut = useMarkNotificationRead();
+  const markReadAllMut = useMarkAllNotificationsRead();
+  const clearReadMut = useClearAllReadNotifications();
 
   const pending       = summary?.pendingRequests    ?? [];
   const subscriptions = summary?.subscriptions       ?? [];
@@ -129,7 +132,7 @@ function NotificationBell() {
     const willOpen = !open;
     setOpen(willOpen);
     if (willOpen) {
-      // Marca todos os IDs atuais como "vistos" — badge zera e persiste
+      // Marca todos os IDs atuais como "vistos" localmente (badge zera)
       const merged = [...new Set([...seenIds, ...allVisibleIds])].slice(-300);
       _setSeenIds(merged);
       saveSeenNotifIds(merged);
@@ -180,36 +183,52 @@ function NotificationBell() {
                         {visiblePending.length} solicitação{visiblePending.length !== 1 ? "ões" : ""} pendente{visiblePending.length !== 1 ? "s" : ""}
                       </p>
                     </div>
-                    {visiblePending.slice(0, 4).map((req: any) => (
-                      <div key={req.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors border-b border-neutral-100 dark:border-neutral-700 last:border-0">
-                        <Link
-                          href="/dashboard"
-                          onClick={() => setOpen(false)}
-                          className="flex items-start gap-3 flex-1 min-w-0"
-                        >
-                          {req.user?.avatar ? (
-                            <NextImage src={req.user.avatar} alt={req.user.name ?? ""} width={28} height={28} className="rounded-full object-cover flex-shrink-0 mt-0.5" loading="lazy" />
-                          ) : (
-                            <div className="w-7 h-7 rounded-full bg-brand-100 dark:bg-brand-900 flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <span className="text-[11px] font-bold text-brand-700 dark:text-brand-300">
-                                {req.user?.name?.[0]?.toUpperCase() ?? "?"}
-                              </span>
+                    {visiblePending.slice(0, 4).map((req: any) => {
+                      const isExpanded = expandedNotifId === `req:${req.id}`;
+                      return (
+                        <div key={req.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors border-b border-neutral-100 dark:border-neutral-700 last:border-0">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start gap-3">
+                              <button
+                                onClick={() => setExpandedNotifId(isExpanded ? null : `req:${req.id}`)}
+                                className="flex items-start gap-3 flex-1 min-w-0 text-left"
+                              >
+                                {req.user?.avatar ? (
+                                  <NextImage src={req.user.avatar} alt={req.user.name ?? ""} width={28} height={28} className="rounded-full object-cover flex-shrink-0 mt-0.5" loading="lazy" />
+                                ) : (
+                                  <div className="w-7 h-7 rounded-full bg-brand-100 dark:bg-brand-900 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span className="text-[11px] font-bold text-brand-700 dark:text-brand-300">
+                                      {req.user?.name?.[0]?.toUpperCase() ?? "?"}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate">
+                                    {req.user?.name ?? "Usuário"} quer entrar em
+                                  </p>
+                                  <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{req.project?.title ?? "seu projeto"}</p>
+                                  
+                                  {isExpanded && (
+                                    <Link
+                                      href="/dashboard?tab=requests"
+                                      onClick={() => { setOpen(false); handleDismiss(req.id); }}
+                                      className="inline-flex items-center gap-1 mt-2 text-[10px] font-semibold text-brand-600 hover:text-brand-800"
+                                    >
+                                      Revisar solicitação →
+                                    </Link>
+                                  )}
+                                </div>
+                              </button>
                             </div>
-                          )}
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate">
-                              {req.user?.name ?? "Usuário"} quer entrar em
-                            </p>
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{req.project?.title ?? "seu projeto"}</p>
                           </div>
-                        </Link>
-                        <button onClick={() => handleDismiss(req.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors" title="Dispensar">
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
+                          <button onClick={() => handleDismiss(req.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors mt-0.5" title="Dispensar">
+                            <X size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
                     {visiblePending.length > 4 && (
-                      <Link href="/dashboard" onClick={() => setOpen(false)}
+                      <Link href="/dashboard?tab=requests" onClick={() => setOpen(false)}
                         className="block px-4 py-2 text-xs text-center text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950 transition-colors font-semibold border-b border-neutral-100 dark:border-neutral-700">
                         Ver todas as {visiblePending.length} solicitações →
                       </Link>
@@ -226,46 +245,74 @@ function NotificationBell() {
                         Novidades nos projetos que você acompanha
                       </p>
                     </div>
-                    {visiblePosts.slice(0, 3).map((post: any) => (
-                      <div key={post.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors border-b border-neutral-100 dark:border-neutral-700 last:border-0">
-                        <Link
-                          href={`/projetos/${post.projectId}`}
-                          onClick={() => setOpen(false)}
-                          className="flex items-start gap-3 flex-1 min-w-0"
-                        >
-                          <div className="w-7 h-7 rounded-xl bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <MessageSquare size={12} className="text-emerald-700 dark:text-emerald-300" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 line-clamp-1">{post.title}</p>
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">Atualização em {post.project?.title}</p>
-                          </div>
-                        </Link>
-                        <button onClick={() => handleDismiss(post.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors" title="Dispensar">
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
-                    {visiblePubs.slice(0, 2).map((pub: any) => (
-                      <div key={pub.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors border-b border-neutral-100 dark:border-neutral-700 last:border-0">
-                        <Link
-                          href="/publicacoes"
-                          onClick={() => setOpen(false)}
-                          className="flex items-start gap-3 flex-1 min-w-0"
-                        >
-                          <div className="w-7 h-7 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">PUB</span>
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 line-clamp-1">{pub.title}</p>
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">Nova publicação em {pub.project?.title}</p>
-                          </div>
-                        </Link>
-                        <button onClick={() => handleDismiss(pub.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors" title="Dispensar">
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
+                    {visiblePosts.slice(0, 3).map((post: any) => {
+                      const isExpanded = expandedNotifId === `post:${post.id}`;
+                      return (
+                        <div key={post.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors border-b border-neutral-100 dark:border-neutral-700 last:border-0">
+                          <button
+                            onClick={() => setExpandedNotifId(isExpanded ? null : `post:${post.id}`)}
+                            className="flex items-start gap-3 flex-1 min-w-0 text-left"
+                          >
+                            <div className="w-7 h-7 rounded-xl bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <MessageSquare size={12} className="text-emerald-700 dark:text-emerald-300" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className={cn("text-xs font-semibold text-neutral-800 dark:text-neutral-200", !isExpanded && "line-clamp-1")}>{post.title}</p>
+                              <p className={cn("text-xs text-neutral-500 dark:text-neutral-400 truncate", isExpanded && "mt-1")}>Atualização em {post.project?.title}</p>
+                              {!isExpanded && post.title?.length > 40 && (
+                                <span className="text-[10px] text-brand-600 font-semibold mt-0.5">ver mais</span>
+                              )}
+                              {isExpanded && (
+                                <Link
+                                  href={`/projetos/${post.projectId}`}
+                                  onClick={() => { setOpen(false); handleDismiss(post.id); }}
+                                  className="inline-flex items-center gap-1 mt-2 text-[10px] font-semibold text-brand-600 hover:text-brand-800"
+                                >
+                                  Ver postagem →
+                                </Link>
+                              )}
+                            </div>
+                          </button>
+                          <button onClick={() => handleDismiss(post.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors mt-0.5" title="Dispensar">
+                            <X size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {visiblePubs.slice(0, 2).map((pub: any) => {
+                      const isExpanded = expandedNotifId === `pub:${pub.id}`;
+                      return (
+                        <div key={pub.id} className="flex items-start gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors border-b border-neutral-100 dark:border-neutral-700 last:border-0">
+                          <button
+                            onClick={() => setExpandedNotifId(isExpanded ? null : `pub:${pub.id}`)}
+                            className="flex items-start gap-3 flex-1 min-w-0 text-left"
+                          >
+                            <div className="w-7 h-7 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">PUB</span>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className={cn("text-xs font-semibold text-neutral-800 dark:text-neutral-200", !isExpanded && "line-clamp-1")}>{pub.title}</p>
+                              <p className={cn("text-xs text-neutral-500 dark:text-neutral-400 truncate", isExpanded && "mt-1")}>Nova publicação em {pub.project?.title}</p>
+                              {!isExpanded && pub.title?.length > 40 && (
+                                <span className="text-[10px] text-brand-600 font-semibold mt-0.5">ver mais</span>
+                              )}
+                              {isExpanded && (
+                                <Link
+                                  href="/publicacoes"
+                                  onClick={() => { setOpen(false); handleDismiss(pub.id); }}
+                                  className="inline-flex items-center gap-1 mt-2 text-[10px] font-semibold text-brand-600 hover:text-brand-800"
+                                >
+                                  Ver publicações →
+                                </Link>
+                              )}
+                            </div>
+                          </button>
+                          <button onClick={() => handleDismiss(pub.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors mt-0.5" title="Dispensar">
+                            <X size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </>
                 )}
 
@@ -290,20 +337,24 @@ function NotificationBell() {
                               "w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5",
                               notif.type === "REQUEST_ACCEPTED" ? "bg-green-100 dark:bg-green-900" :
                               notif.type === "MEMBER_REMOVED"   ? "bg-red-100 dark:bg-red-900" :
+                              notif.type === "JOIN_REQUEST"     ? "bg-brand-100 dark:bg-brand-900" :
                               "bg-violet-100 dark:bg-violet-900",
                             )}>
                               <span className={cn(
                                 "text-[10px] font-bold",
                                 notif.type === "REQUEST_ACCEPTED" ? "text-green-700 dark:text-green-300" :
                                 notif.type === "MEMBER_REMOVED"   ? "text-red-700 dark:text-red-300" :
+                                notif.type === "JOIN_REQUEST"     ? "text-brand-700 dark:text-brand-300" :
                                 "text-violet-700 dark:text-violet-300",
                               )}>
-                                {notif.type === "REQUEST_ACCEPTED" ? "✓" : notif.type === "MEMBER_REMOVED" ? "✕" : "!"}
+                                {notif.type === "REQUEST_ACCEPTED" ? "✓" : 
+                                 notif.type === "MEMBER_REMOVED"   ? "✕" : 
+                                 notif.type === "JOIN_REQUEST"     ? "★" : "!"}
                               </span>
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className={cn("text-xs font-semibold text-neutral-800 dark:text-neutral-200", !isExpanded && "line-clamp-2")}>
-                                {notif.message}
+                                {notif.message?.replace(/\s*\[pubId:[^\]]+\]/, "")}
                               </p>
                               {notif.createdAt && (
                                 <p className="text-[10px] text-neutral-400 mt-0.5">
@@ -314,12 +365,13 @@ function NotificationBell() {
                               {isExpanded && (
                                 <Link
                                   href={
-                                    notif.type === "PUBLICATION_SUGGESTION" ? "/dashboard?tab=requests" :
+                                    notif.type === "PUBLICATION_SUGGESTION" ? "/dashboard" :
                                     notif.type === "PUBLICATION_PENDING"    ? "/dashboard?tab=requests" :
+                                    notif.type === "JOIN_REQUEST"           ? "/dashboard?tab=requests" :
                                     notif.projectId ? `/projetos/${notif.projectId}` :
                                     notif.project?.id ? `/projetos/${notif.project.id}` : "/dashboard"
                                   }
-                                  onClick={() => setOpen(false)}
+                                  onClick={() => { setOpen(false); handleDismiss(notif.id); markReadMut.mutate(notif.id); }}
                                   className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-semibold text-brand-600 hover:text-brand-800"
                                 >
                                   Ir para →
@@ -327,7 +379,7 @@ function NotificationBell() {
                               )}
                             </div>
                           </button>
-                          <button onClick={() => handleDismiss(notif.id)} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors" title="Dispensar">
+                          <button onClick={() => { handleDismiss(notif.id); markReadMut.mutate(notif.id); }} className="flex-shrink-0 p-1 rounded-md text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors" title="Dispensar">
                             <X size={12} />
                           </button>
                         </div>

@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typedRoutes: false,
+  typedRoutes: true,
   turbopack: {},
   images: {
     remotePatterns: [

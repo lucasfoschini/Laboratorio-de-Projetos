@@ -328,17 +328,9 @@ export default function EditarPublicacaoPage() {
           authorIds:  selectedAuthors.map((a: any) => a.id),
         },
       });
-      // Marca notificações de sugestão desta publicação como lidas
-      const suggNotifs = (notifSummary?.systemNotifications ?? []).filter(
-        (n: any) => n.type === "PUBLICATION_SUGGESTION" && n.message?.includes(`[pubId:${id}]`) && !n.read
-      );
-      for (const n of suggNotifs) { markReadMut.mutate(n.id); }
-      // Se tinha sugestões pendentes, volta para o dashboard; senão vai para a publicação
-      if (suggNotifs.length > 0) {
-        router.push("/dashboard?tab=requests");
-      } else {
-        router.push(`/publicacoes/${id}`);
-      }
+
+      // Redireciona de volta. O servidor já limpou as notificações de sugestão.
+      router.push("/dashboard?tab=requests");
     } catch (err: any) {
       setFormError(err?.response?.data?.message ?? "Erro ao atualizar publicação.");
     }

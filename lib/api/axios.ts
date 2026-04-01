@@ -5,22 +5,17 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3334";
 export const api = axios.create({
   baseURL: BASE_URL,
   timeout: 15_000,
+  withCredentials: true,                          // cookies enviados automaticamente
   headers: { "Content-Type": "application/json" },
 });
 
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("@labativo:access_token");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Interceptor de request removido — tokens trafegam via cookies HttpOnly (withCredentials: true)
 
 let isRefreshing = false;
-let queue: { resolve: (v: string) => void; reject: (e: unknown) => void }[] = [];
+let queue: { resolve: () => void; reject: (e: unknown) => void }[] = [];
 
-const processQueue = (err: unknown, token: string | null = null) => {
-  queue.forEach(({ resolve, reject }) => (err ? reject(err) : resolve(token!)));
+const processQueue = (err: unknown) => {
+  queue.forEach(({ resolve, reject }) => (err ? reject(err) : resolve()));
   queue = [];
 };
 
@@ -31,25 +26,27 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const orig = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _retryCount?: number };
 
-    // 429: espera e retenta (max 2x)
+    // 429: espera e retenta (max 2x), respeitando o header Retry-After quando disponível
     if (error.response?.status === 429) {
       orig._retryCount = (orig._retryCount ?? 0) + 1;
       if (orig._retryCount <= 2) {
-        await sleep(orig._retryCount * 2000);
+        const retryAfter = error.response?.headers["retry-after"];
+        const delay = retryAfter
+          ? parseInt(retryAfter, 10) * 1000
+          : orig._retryCount * 2000;
+        await sleep(delay);
         return api(orig);
       }
       return Promise.reject(error);
     }
 
-    // 401: refresh token
+    // 401: tenta renovar via refresh token (cookie HttpOnly enviado automaticamente)
     if (error.response?.status === 401 && !orig._retry) {
       if (typeof window === "undefined") return Promise.reject(error);
-      const hasToken = !!localStorage.getItem("@labativo:access_token");
-      if (!hasToken) return Promise.reject(error);
 
       if (isRefreshing) {
-        return new Promise((res, rej) => queue.push({ resolve: res, reject: rej })).then(
-          (token) => { orig.headers.Authorization = `Bearer ${token}`; return api(orig); }
+        return new Promise<void>((res, rej) => queue.push({ resolve: res, reject: rej })).then(
+          () => api(orig)
         );
       }
 
@@ -57,19 +54,13 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const rt = localStorage.getItem("@labativo:refresh_token");
-        if (!rt) throw new Error("no refresh token");
-        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken: rt });
-        localStorage.setItem("@labativo:access_token",  data.accessToken);
-        localStorage.setItem("@labativo:refresh_token", data.refreshToken);
-        processQueue(null, data.accessToken);
-        orig.headers.Authorization = `Bearer ${data.accessToken}`;
+        // Sem body e sem localStorage — o cookie de refresh vai automaticamente
+        await axios.post(`${BASE_URL}/auth/refresh`, {}, { withCredentials: true, timeout: 10_000 });
+        processQueue(null);
         return api(orig);
       } catch (e) {
-        processQueue(e, null);
-        ["@labativo:access_token", "@labativo:refresh_token", "@labativo:user"].forEach(
-          (k) => localStorage.removeItem(k),
-        );
+        processQueue(e);
+        localStorage.removeItem("@labativo:user"); // apenas o user — cookies limpos pelo servidor
         window.location.href = "/auth/login";
         return Promise.reject(e);
       } finally {
@@ -91,6 +82,7 @@ export const authApi = {
   updateMe:       (d: unknown) => api.patch("/auth/me",             d),
   forgotPassword: (d: unknown) => api.post("/auth/forgot-password", d),
   resetPassword:  (d: unknown) => api.post("/auth/reset-password",  d),
+  logout:         ()           => api.post("/auth/logout"),          // limpa cookies HttpOnly no servidor
 };
 
 export const projectsApi = {
@@ -153,14 +145,16 @@ export const usersApi = {
 };
 
 export const activitiesApi = {
-  list:   (projectId: string)                          => api.get(`/projects/${projectId}/activities`),
+  list:    (projectId: string)                         => api.get(`/projects/${projectId}/activities`),
   getById: (projectId: string, activityId: string)     => api.get(`/projects/${projectId}/activities/${activityId}`),
-  create: (projectId: string, d: unknown)              => api.post(`/projects/${projectId}/activities`, d),
-  toggle: (projectId: string, activityId: string)      => api.patch(`/projects/${projectId}/activities/${activityId}/toggle`),
-  delete: (projectId: string, activityId: string)      => api.delete(`/projects/${projectId}/activities/${activityId}`),
+  create:  (projectId: string, d: unknown)             => api.post(`/projects/${projectId}/activities`, d),
+  toggle:  (projectId: string, activityId: string)     => api.patch(`/projects/${projectId}/activities/${activityId}/toggle`),
+  delete:  (projectId: string, activityId: string)     => api.delete(`/projects/${projectId}/activities/${activityId}`),
 };
 
 export const notificationsApi = {
-  list:     (signal?: AbortSignal) => api.get("/notifications",           { signal }),
-  markRead: (id: string)           => api.patch(`/notifications/${id}/read`),
+  list:        (signal?: AbortSignal) => api.get("/notifications",           { signal }),
+  markRead:    (id: string)           => api.patch(`/notifications/${id}/read`),
+  markReadAll: ()                     => api.patch("/notifications/read-all"),
+  deleteAllRead: ()                   => api.delete("/notifications/read"),
 };

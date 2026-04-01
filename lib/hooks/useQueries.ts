@@ -6,17 +6,18 @@ import {
   activitiesApi, dashboardApi, memberRequestsApi, notificationsApi,
   postsApi, projectsApi, publicationsApi, usersApi,
 } from "@/lib/api/axios";
+import { useAuth } from "@/contexts/auth";
 import { adaptProject, adaptPublication, adaptRequest } from "@/lib/adapters";
 
 const STALE = {
-  short:  1000 * 60 * 5,
+  short: 1000 * 60 * 5,
   medium: 1000 * 60 * 10,
-  long:   1000 * 60 * 30,
+  long: 1000 * 60 * 30,
 };
 
 const BASE_OPTS = {
   refetchOnWindowFocus: false,
-  refetchOnReconnect:   false,
+  refetchOnReconnect: false,
   retry: (failureCount: number, error: any) => {
     if (error?.response?.status === 429) return false;
     return failureCount < 2;
@@ -35,11 +36,11 @@ export function useProjects(p?: object) {
       const { data } = await projectsApi.list({ ...p, page: pageParam, limit: 12 }, signal);
       const items = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
       return {
-        data:       items.map(adaptProject),
-        total:      data?.total      ?? items.length,
-        page:       data?.page       ?? pageParam,
+        data: items.map(adaptProject),
+        total: data?.total ?? items.length,
+        page: data?.page ?? pageParam,
         totalPages: data?.totalPages ?? 1,
-        hasMore:    data?.hasMore    ?? false,
+        hasMore: data?.hasMore ?? false,
       };
     },
     getNextPageParam: (lastPage) =>
@@ -58,10 +59,10 @@ export function useProject(id: string) {
       const adapted = adaptProject(data);
       return {
         ...adapted,
-        subscribed:  data.subscribed  ?? false,
-        activities:  data.activities  ?? [],
-        posts:       data.posts       ?? [],
-        postsTotal:  data.postsTotal  ?? 0,
+        subscribed: data.subscribed ?? false,
+        activities: data.activities ?? [],
+        posts: data.posts ?? [],
+        postsTotal: data.postsTotal ?? 0,
       };
     },
     enabled: !!id,
@@ -132,7 +133,7 @@ export function useLeaveProject() {
         return {
           ...old,
           enrolled: Math.max(0, (old.enrolled ?? 1) - 1),
-          members:  (old.members ?? []).filter((m: any) => m.id !== old.currentUserId),
+          members: (old.members ?? []).filter((m: any) => m.id !== old.currentUserId),
         };
       });
       return { previous };
@@ -142,7 +143,7 @@ export function useLeaveProject() {
     },
     onSettled: (_, __, projectId) => {
       qc.invalidateQueries({ queryKey: ["project", projectId] });
-      qc.invalidateQueries({ queryKey: ["dashboard", "overview"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }
@@ -159,7 +160,7 @@ export function useRemoveMember() {
         if (!old) return old;
         return {
           ...old,
-          members:  (old.members ?? []).filter((m: any) => m.id !== userId),
+          members: (old.members ?? []).filter((m: any) => m.id !== userId),
           enrolled: Math.max(0, (old.enrolled ?? 1) - 1),
         };
       });
@@ -225,7 +226,10 @@ export function useJoinRequest() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => projectsApi.joinRequest(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["dashboard", "overview"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["notification-summary"] });
+    },
   });
 }
 
@@ -247,9 +251,61 @@ export function useReviewRequest() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: "APPROVED" | "REJECTED" }) =>
       memberRequestsApi.review(id, { status }),
+    onMutate: async ({ id }) => {
+      // Cancela queries em andamento para evitar sobrescrever o optimistic update
+      await qc.cancelQueries({ queryKey: ["join-requests"] });
+      await qc.cancelQueries({ queryKey: ["dashboard"] });
+
+      // Salva estado anterior para rollback em caso de erro
+      const previousJoinRequests = qc.getQueriesData({ queryKey: ["join-requests"] });
+      const previousOverview = qc.getQueryData(["dashboard", "overview"]);
+      const previousPending = qc.getQueryData(["dashboard", "pending-requests"]);
+      const previousRequests = qc.getQueryData(["dashboard", "requests"]);
+
+      const filterById = (old: any) =>
+        Array.isArray(old) ? old.filter((r: any) => r.id !== id) : old;
+
+      // Remove o item imediatamente de todas as listas que podem exibi-lo
+      qc.setQueriesData({ queryKey: ["join-requests"] }, filterById);
+      qc.setQueryData(["dashboard", "requests"], filterById);
+      qc.setQueryData(["dashboard", "pending-requests"], filterById);
+      qc.setQueryData(["dashboard", "overview"], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pendingRequests: (old.pendingRequests ?? []).filter((r: any) => r.id !== id),
+          requests: (old.requests ?? []).filter((r: any) => r.id !== id),
+        };
+      });
+
+      return { previousJoinRequests, previousOverview, previousPending, previousRequests };
+    },
+    onError: (error: any, _, ctx) => {
+      // 400 "Solicitação já avaliada" — item já foi processado; mantém o update
+      // otimista (item oculto) e sincroniza com o servidor após um delay
+      if (error?.response?.status === 400) {
+        setTimeout(() => {
+          qc.invalidateQueries({ queryKey: ["join-requests"] });
+          qc.invalidateQueries({ queryKey: ["dashboard"] });
+        }, 600);
+        return;
+      }
+
+      // Reverte o optimistic update apenas em erros verdadeiros (5xx, rede, etc.)
+      if (ctx?.previousJoinRequests) {
+        ctx.previousJoinRequests.forEach(([key, data]: [any, any]) => qc.setQueryData(key, data));
+      }
+      if (ctx?.previousOverview) qc.setQueryData(["dashboard", "overview"], ctx.previousOverview);
+      if (ctx?.previousPending) qc.setQueryData(["dashboard", "pending-requests"], ctx.previousPending);
+      if (ctx?.previousRequests) qc.setQueryData(["dashboard", "requests"], ctx.previousRequests);
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["join-requests"] });
-      qc.invalidateQueries({ queryKey: ["dashboard", "overview"] });
+      // Aguarda 600ms antes de refazer o fetch — evita o race condition onde o
+      // backend ainda não confirmou a mudança e o item volta a aparecer como PENDING
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ["join-requests"] });
+        qc.invalidateQueries({ queryKey: ["dashboard"] });
+      }, 600);
     },
   });
 }
@@ -258,7 +314,7 @@ export function useCancelRequest() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => memberRequestsApi.cancel(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["dashboard", "overview"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dashboard"] }),
   });
 }
 
@@ -320,11 +376,11 @@ export function usePublications(filters?: { type?: string; year?: string }) {
       const { data } = await publicationsApi.list(params, signal);
       const items = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
       return {
-        data:       items.map(adaptPublication),
-        total:      data?.total      ?? items.length,
-        page:       data?.page       ?? pageParam,
+        data: items.map(adaptPublication),
+        total: data?.total ?? items.length,
+        page: data?.page ?? pageParam,
         totalPages: data?.totalPages ?? 1,
-        hasMore:    data?.hasMore    ?? false,
+        hasMore: data?.hasMore ?? false,
       };
     },
     getNextPageParam: (lastPage) =>
@@ -346,14 +402,20 @@ export function usePublication(id: string) {
   });
 }
 
-
 export function useApprovePublication() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => publicationsApi.approve(id),
-    onSuccess: (_, id) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["publications"] });
       qc.invalidateQueries({ queryKey: ["pending-publications"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["notification-summary"] });
+    },
+    onError: (error: any) => {
+      if (error?.response?.status === 404) {
+        qc.invalidateQueries({ queryKey: ["pending-publications"] });
+      }
     },
   });
 }
@@ -372,9 +434,16 @@ export function usePendingPublications(projectId: string, enabled = true) {
 }
 
 export function useSuggestPublication() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, suggestion }: { id: string; suggestion: string }) =>
       publicationsApi.suggest(id, suggestion),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["publications"] });
+      qc.invalidateQueries({ queryKey: ["pending-publications"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["notification-summary"] });
+    },
   });
 }
 
@@ -386,6 +455,13 @@ export function useRejectPublication() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["publications"] });
       qc.invalidateQueries({ queryKey: ["pending-publications"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["notification-summary"] });
+    },
+    onError: (error: any) => {
+      if (error?.response?.status === 404) {
+        qc.invalidateQueries({ queryKey: ["pending-publications"] });
+      }
     },
   });
 }
@@ -405,6 +481,8 @@ export function useUpdatePublication() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ["publication", id] });
       qc.invalidateQueries({ queryKey: ["publications"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["notification-summary"] });
     },
   });
 }
@@ -444,81 +522,92 @@ export function useDeletePublication() {
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export function useDashboardStats() {
+  const { user } = useAuth();
   return useQuery({
     ...BASE_OPTS,
-    queryKey: ["dashboard", "stats"],
+    queryKey: ["dashboard", "stats", user?.id],
     queryFn: async ({ signal }) => { const { data } = await dashboardApi.stats(signal); return data; },
     staleTime: STALE.short,
+    enabled: !!user?.id,
   });
 }
 
 export function useDashboardProjects(enabled = true) {
+  const { user } = useAuth();
   return useQuery({
     ...BASE_OPTS,
-    queryKey: ["dashboard", "projects"],
+    queryKey: ["dashboard", "projects", user?.id],
     queryFn: async ({ signal }) => {
       const { data } = await dashboardApi.myProjects(signal);
       return Array.isArray(data) ? data.map(adaptProject) : [];
     },
-    enabled,
+    enabled: !!user?.id && enabled,
     staleTime: STALE.short,
   });
 }
 
 export function useDashboardRequests() {
+  const { user } = useAuth();
   return useQuery({
     ...BASE_OPTS,
-    queryKey: ["dashboard", "requests"],
+    queryKey: ["dashboard", "requests", user?.id],
     queryFn: async ({ signal }) => {
       const { data } = await dashboardApi.myRequests(signal);
       return Array.isArray(data) ? data.map(adaptRequest) : [];
     },
     staleTime: STALE.short,
+    enabled: !!user?.id,
   });
 }
 
 export function useDashboardPendingRequests() {
+  const { user } = useAuth();
   return useQuery({
     ...BASE_OPTS,
-    queryKey: ["dashboard", "pending-requests"],
+    queryKey: ["dashboard", "pending-requests", user?.id],
     queryFn: async ({ signal }) => {
       const { data } = await dashboardApi.pendingRequests(signal);
       return Array.isArray(data) ? data.map(adaptRequest) : [];
     },
     staleTime: STALE.short,
+    enabled: !!user?.id,
   });
 }
 
 export function useDashboardSubscriptions() {
+  const { user } = useAuth();
   return useQuery({
     ...BASE_OPTS,
-    queryKey: ["dashboard", "subscriptions"],
+    queryKey: ["dashboard", "subscriptions", user?.id],
     queryFn: async ({ signal }) => {
       const { data } = await dashboardApi.subscriptions(signal);
       return Array.isArray(data) ? data : [];
     },
     staleTime: STALE.medium,
+    enabled: !!user?.id,
   });
 }
 
 export function useSubscribedActivity(enabled = true) {
+  const { user } = useAuth();
   return useQuery({
     ...BASE_OPTS,
-    queryKey: ["dashboard", "subscribed-activity"],
+    queryKey: ["dashboard", "subscribed-activity", user?.id],
     queryFn: async ({ signal }) => {
       const { data } = await dashboardApi.subscribedActivity(signal);
       return data as { posts: any[]; publications: any[] };
     },
-    enabled,
-    staleTime:       STALE.medium,
-    refetchInterval: 1000 * 60 * 10,
+    enabled: !!user?.id && enabled,
+    staleTime: STALE.short,
+    refetchInterval: 1000 * 60 * 5,
   });
 }
 
 export function useDashboardOverview() {
+  const { user } = useAuth();
   return useQuery({
     ...BASE_OPTS,
-    queryKey: ["dashboard", "overview"],
+    queryKey: ["dashboard", "overview", user?.id],
     queryFn: async ({ signal }) => {
       const { data } = await dashboardApi.overview(signal);
       return data as {
@@ -530,27 +619,29 @@ export function useDashboardOverview() {
       };
     },
     staleTime: STALE.short,
+    enabled: !!user?.id,
   });
 }
 
 // ─── Notification Summary ─────────────────────────────────────────────────────
 
 export function useNotificationSummary(enabled = true) {
+  const { user } = useAuth();
   return useQuery({
     ...BASE_OPTS,
-    queryKey: ["notification-summary"],
+    queryKey: ["notification-summary", user?.id],
     queryFn: async ({ signal }) => {
       const { data } = await dashboardApi.notificationSummary(signal);
       return data as {
-        pendingRequests:     any[];
-        subscriptions:       { projectId: string; createdAt: string }[];
-        activity:            { posts: any[]; publications: any[] };
+        pendingRequests: any[];
+        subscriptions: { projectId: string; createdAt: string }[];
+        activity: { posts: any[]; publications: any[] };
         systemNotifications: any[];
       };
     },
-    enabled,
-    staleTime:       1000 * 60 * 5,
-    refetchInterval: 1000 * 60 * 5,
+    enabled: !!user?.id && enabled,
+    staleTime: 1000 * 2, // Apenas 2 segundos
+    refetchInterval: 1000 * 15, // Polling a cada 15 segundos
   });
 }
 
@@ -570,6 +661,35 @@ export function useMarkNotificationRead() {
     },
     onError: (_, __, ctx) => {
       if (ctx?.previous) qc.setQueryData(["notifications"], ctx.previous);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["notification-summary"] });
+    },
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => notificationsApi.markReadAll(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["notification-summary"] });
+    },
+  });
+}
+
+export function useClearAllReadNotifications() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => notificationsApi.deleteAllRead(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["notification-summary"] });
     },
   });
 }
@@ -611,7 +731,7 @@ export function useCreateActivity() {
     mutationFn: ({ projectId, data }: { projectId: string; data: unknown }) =>
       activitiesApi.create(projectId, data),
     onSuccess: (_, { projectId }) => {
-      qc.invalidateQueries({ queryKey: ["activities", projectId] });
+      qc.invalidateQueries({ queryKey: ["project", projectId] }); // corrigido: era ["activities", projectId]
     },
   });
 }
@@ -622,18 +742,24 @@ export function useToggleActivity() {
     mutationFn: ({ projectId, activityId }: { projectId: string; activityId: string }) =>
       activitiesApi.toggle(projectId, activityId),
     onMutate: async ({ projectId, activityId }) => {
-      await qc.cancelQueries({ queryKey: ["activities", projectId] });
-      const previous = qc.getQueryData(["activities", projectId]);
-      qc.setQueryData(["activities", projectId], (old: any[]) =>
-        (old ?? []).map((a) => a.id === activityId ? { ...a, done: !a.done } : a)
-      );
+      await qc.cancelQueries({ queryKey: ["project", projectId] });
+      const previous = qc.getQueryData(["project", projectId]);
+      qc.setQueryData(["project", projectId], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          activities: (old.activities ?? []).map((a: any) =>
+            a.id === activityId ? { ...a, done: !a.done } : a
+          ),
+        };
+      });
       return { previous };
     },
     onError: (_, { projectId }, ctx) => {
-      if (ctx?.previous) qc.setQueryData(["activities", projectId], ctx.previous);
+      if (ctx?.previous) qc.setQueryData(["project", projectId], ctx.previous);
     },
     onSettled: (_, __, { projectId }) => {
-      qc.invalidateQueries({ queryKey: ["activities", projectId] });
+      qc.invalidateQueries({ queryKey: ["project", projectId] }); // corrigido: era ["activities", projectId]
     },
   });
 }
@@ -644,18 +770,22 @@ export function useDeleteActivity() {
     mutationFn: ({ projectId, activityId }: { projectId: string; activityId: string }) =>
       activitiesApi.delete(projectId, activityId),
     onMutate: async ({ projectId, activityId }) => {
-      await qc.cancelQueries({ queryKey: ["activities", projectId] });
-      const previous = qc.getQueryData(["activities", projectId]);
-      qc.setQueryData(["activities", projectId], (old: any[]) =>
-        (old ?? []).filter((a) => a.id !== activityId)
-      );
+      await qc.cancelQueries({ queryKey: ["project", projectId] });
+      const previous = qc.getQueryData(["project", projectId]);
+      qc.setQueryData(["project", projectId], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          activities: (old.activities ?? []).filter((a: any) => a.id !== activityId),
+        };
+      });
       return { previous };
     },
     onError: (_, { projectId }, ctx) => {
-      if (ctx?.previous) qc.setQueryData(["activities", projectId], ctx.previous);
+      if (ctx?.previous) qc.setQueryData(["project", projectId], ctx.previous);
     },
     onSettled: (_, __, { projectId }) => {
-      qc.invalidateQueries({ queryKey: ["activities", projectId] });
+      qc.invalidateQueries({ queryKey: ["project", projectId] }); // corrigido: era ["activities", projectId]
     },
   });
 }
