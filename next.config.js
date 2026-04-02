@@ -18,6 +18,15 @@ const nextConfig = {
       { protocol: "https", hostname: "imgur.com" },
     ],
   },
+  async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3334";
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${apiUrl}/:path*`, // Proxy para o backend
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

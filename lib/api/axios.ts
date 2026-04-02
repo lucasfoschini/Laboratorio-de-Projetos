@@ -1,6 +1,10 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3334";
+// Proxy via Next.js for browsers (avoids Cross-Domain / Third-party Cookie blocks)
+const isServer = typeof window === "undefined";
+const BASE_URL = isServer 
+  ? (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3334") 
+  : "/api";
 
 export const api = axios.create({
   baseURL: BASE_URL,
