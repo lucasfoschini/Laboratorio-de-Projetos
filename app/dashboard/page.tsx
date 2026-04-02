@@ -395,8 +395,12 @@ function DashboardContent({ initialTab }: { initialTab: string }) {
             <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center mb-2 sm:mb-3 ${color}`}>
               <Icon size={15} />
             </div>
-            <p className="font-display font-extrabold text-xl sm:text-2xl text-neutral-900 dark:text-neutral-100">{value}</p>
-            <p className="text-[11px] sm:text-xs text-neutral-400 mt-0.5 leading-tight">{label}</p>
+            {overviewLoading ? (
+              <Skeleton className="h-7 sm:h-8 w-12 mb-0.5 rounded-lg" />
+            ) : (
+              <p className="font-display font-extrabold text-xl sm:text-2xl text-neutral-900 dark:text-neutral-100">{String(value)}</p>
+            )}
+            <p className="text-[11px] sm:text-xs text-neutral-400 mt-1 leading-tight">{label}</p>
           </div>
         ))}
       </div>
