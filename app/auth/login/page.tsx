@@ -25,7 +25,7 @@ export default function LoginPage() {
     try {
       setApiError("");
       await login(data.email.trim().toLowerCase(), data.password);
-      router.push("/dashboard");
+      window.location.href = "/dashboard";
     } catch (err: any) {
       const status = err?.response?.status;
       const body   = err?.response?.data;

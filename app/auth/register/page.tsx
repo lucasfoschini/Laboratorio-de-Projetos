@@ -38,7 +38,7 @@ export default function RegisterPage() {
         institution: data.institution,
         department:  data.department || undefined,
       });
-      router.push("/dashboard");
+      window.location.href = "/dashboard";
     } catch (err: any) {
       const status = err?.response?.status;
       const body   = err?.response?.data;

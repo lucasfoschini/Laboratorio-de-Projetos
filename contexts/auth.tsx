@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.clear(); // limpa todo o cache do React Query ao trocar de conta
       localStorage.removeItem(KEYS.user);
       setUser(null);
-      router.push("/auth/login");
+      window.location.href = "/auth/login";
     }
   }, [router, queryClient]);
 
