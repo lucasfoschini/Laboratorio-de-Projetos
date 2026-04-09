@@ -133,7 +133,6 @@ export function useLeaveProject() {
         return {
           ...old,
           enrolled: Math.max(0, (old.enrolled ?? 1) - 1),
-          members: (old.members ?? []).filter((m: any) => m.id !== old.currentUserId),
         };
       });
       return { previous };
@@ -141,9 +140,10 @@ export function useLeaveProject() {
     onError: (_, projectId, ctx) => {
       if (ctx?.previous) qc.setQueryData(["project", projectId], ctx.previous);
     },
-    onSettled: (_, __, projectId) => {
-      qc.invalidateQueries({ queryKey: ["project", projectId] });
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["project"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 }
@@ -267,14 +267,21 @@ export function useReviewRequest() {
 
       // Remove o item imediatamente de todas as listas que podem exibi-lo
       qc.setQueriesData({ queryKey: ["join-requests"] }, filterById);
-      qc.setQueryData(["dashboard", "requests"], filterById);
-      qc.setQueryData(["dashboard", "pending-requests"], filterById);
-      qc.setQueryData(["dashboard", "overview"], (old: any) => {
+      qc.setQueriesData({ queryKey: ["dashboard", "requests"] }, filterById);
+      qc.setQueriesData({ queryKey: ["dashboard", "pending-requests"] }, filterById);
+      qc.setQueriesData({ queryKey: ["dashboard", "overview"] }, (old: any) => {
         if (!old) return old;
         return {
           ...old,
           pendingRequests: (old.pendingRequests ?? []).filter((r: any) => r.id !== id),
           requests: (old.requests ?? []).filter((r: any) => r.id !== id),
+        };
+      });
+      qc.setQueriesData({ queryKey: ["notification-summary"] }, (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pendingRequests: (old.pendingRequests ?? []).filter((r: any) => r.id !== id),
         };
       });
 
@@ -300,12 +307,11 @@ export function useReviewRequest() {
       if (ctx?.previousRequests) qc.setQueryData(["dashboard", "requests"], ctx.previousRequests);
     },
     onSuccess: () => {
-      // Aguarda 600ms antes de refazer o fetch — evita o race condition onde o
-      // backend ainda não confirmou a mudança e o item volta a aparecer como PENDING
-      setTimeout(() => {
-        qc.invalidateQueries({ queryKey: ["join-requests"] });
-        qc.invalidateQueries({ queryKey: ["dashboard"] });
-      }, 600);
+      // Invalida os caches globais para sincronização com o banco
+      qc.invalidateQueries({ queryKey: ["join-requests"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["project"] });
+      qc.invalidateQueries({ queryKey: ["notification-summary"] });
     },
   });
 }

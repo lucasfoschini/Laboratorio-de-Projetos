@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import {
   ArrowLeft, Bell, BellOff, BookOpen, Calendar, CheckCircle2,
   ExternalLink, FileText, Image, LogOut, Mail, MessageCircle, Pencil, Phone,
@@ -115,8 +116,13 @@ export default function ProjectDetailPage() {
   const deleteActivityMut = useDeleteActivity();
 
   const handleFinalize = useCallback(async () => {
-    await finalizeMut.mutateAsync({ id, data: { status: "FINALIZADO" } });
-    setShowFinalizeModal(false);
+    try {
+      await finalizeMut.mutateAsync({ id, data: { status: "FINALIZADO" } });
+      setShowFinalizeModal(false);
+      toast.success("Projeto finalizado com sucesso.");
+    } catch {
+      toast.error("Erro ao finalizar projeto.");
+    }
   }, [finalizeMut, id]);
 
   const joinForm = useForm<JoinForm>({ resolver: zodResolver(joinSchema) });
@@ -148,7 +154,11 @@ export default function ProjectDetailPage() {
 
   const handleSubscribe = () => {
     if (!isAuthenticated) return;
-    subscribeMut.mutate({ id, subscribed });
+    toast.promise(subscribeMut.mutateAsync({ id, subscribed }), {
+      loading: subscribed ? "Cancelando inscrição..." : "Inscrevendo-se...",
+      success: subscribed ? "Você não acompanha mais este projeto." : "Agora você acompanha este projeto!",
+      error: "Erro ao alterar inscrição."
+    });
   };
 
   const handleJoin = async (data: JoinForm) => {
@@ -157,6 +167,7 @@ export default function ProjectDetailPage() {
       await joinMut.mutateAsync({ id, data: { message: data.message } });
       setJoinDone(true);
       setShowJoinForm(false);
+      toast.success("Solicitação enviada!", { description: "O criador do projeto será notificado." });
     } catch (err: any) {
       const msg = (err?.response?.data?.message ?? "") as string;
       const isDuplicate = err?.response?.status === 409 || /já|already|duplicate|existente|pendente/i.test(msg);
@@ -168,10 +179,12 @@ export default function ProjectDetailPage() {
           await joinMut.mutateAsync({ id, data: { message: data.message } });
           setJoinDone(true);
           setShowJoinForm(false);
+          toast.success("Solicitação reenviada!", { description: "Sua solicitação anterior foi substituída." });
           return;
         } catch { /* fallthrough */ }
       }
       setJoinError(msg || "Erro ao enviar solicitação.");
+      toast.error("Falha ao entrar no grupo", { description: msg || "Tente novamente mais tarde." });
     }
   };
 
@@ -181,7 +194,17 @@ export default function ProjectDetailPage() {
       const media = postMedia.filter(m => m.url.trim()).map(m => ({ type: m.type || "ARTICLE_LINK", url: m.url, title: m.title || undefined }));
       await createPostMut.mutateAsync({ projectId: id, data: { title: data.title, content: data.content, media: media.length > 0 ? media : undefined } });
       setShowPostForm(false); setPostMedia([]); postForm.reset();
-    } catch (err: any) { setPostError(err?.response?.data?.message ?? "Erro ao publicar."); }
+      
+      if (user?.role === "professor" || isOwner) {
+        toast.success("Atualização publicada com sucesso!");
+      } else {
+        toast.success("Atualização enviada para análise!", { description: "Foi encaminhada ao professor responsável." });
+      }
+    } catch (err: any) { 
+      const msg = err?.response?.data?.message ?? "Erro ao publicar.";
+      setPostError(msg); 
+      toast.error("Erro ao publicar", { description: msg });
+    }
   };
 
   const handleEditPost = async (postId: string, data: PostForm) => {
@@ -190,7 +213,12 @@ export default function ProjectDetailPage() {
       const media = editMedia.filter(m => m.url.trim()).map(m => ({ type: m.type || "ARTICLE_LINK", url: m.url, title: m.title || undefined }));
       await updatePostMut.mutateAsync({ id: postId, data: { title: data.title, content: data.content, media: media.length > 0 ? media : undefined } });
       setEditingPost(null); setEditMedia([]);
-    } catch (err: any) { setPostError(err?.response?.data?.message ?? "Erro ao salvar."); }
+      toast.success("Atualização salva!");
+    } catch (err: any) { 
+      const msg = err?.response?.data?.message ?? "Erro ao salvar.";
+      setPostError(msg); 
+      toast.error("Erro ao salvar", { description: msg });
+    }
   };
 
   const addMediaItem    = (setter: React.Dispatch<React.SetStateAction<MediaItem[]>>) => setter(prev => [...prev, { type: "IMAGE", url: "", title: "" }]);
@@ -355,7 +383,14 @@ export default function ProjectDetailPage() {
                         {canEditPost && !isEditing && (
                           <div className="flex items-center gap-1">
                             <button onClick={() => { setEditingPost(post.id); setEditMedia((post.media ?? []).map((m: any) => ({ type: m.type ?? "IMAGE", url: m.url ?? "", title: m.title ?? "" }))); postForm.setValue("title", post.title); postForm.setValue("content", post.content); }} className="p-1.5 rounded-lg text-neutral-300 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950 transition-all"><Pencil size={13} /></button>
-                            <button onClick={() => deletePostMut.mutate(post.id)} className="p-1.5 rounded-lg text-neutral-300 hover:text-danger-500 hover:bg-danger-50 transition-all"><Trash2 size={13} /></button>
+                            <button onClick={() => {
+                                toast("Excluir atualização?", {
+                                  description: "Esta ação não pode ser desfeita.",
+                                  action: { label: "Excluir", onClick: () => toast.promise(deletePostMut.mutateAsync(post.id), { loading: "Excluindo...", success: "Atualização excluída.", error: "Erro ao excluir." }) },
+                                  cancel: { label: "Cancelar", onClick: () => {} },
+                                });
+                              }} 
+                              className="p-1.5 rounded-lg text-neutral-300 hover:text-danger-500 hover:bg-danger-50 transition-all"><Trash2 size={13} /></button>
                           </div>
                         )}
                       </div>
@@ -522,7 +557,11 @@ export default function ProjectDetailPage() {
                             await createActivityMut.mutateAsync({ projectId: id, data: activityForm });
                             setActivityForm({ title: "", description: "", dueDate: "", responsibleIds: [] });
                             setShowActivityForm(false);
-                          } catch { setActivityError("Erro ao criar atividade."); }
+                            toast.success("Atividade criada com sucesso!");
+                          } catch { 
+                            setActivityError("Erro ao criar atividade."); 
+                            toast.error("Erro ao criar atividade."); 
+                          }
                         }}
                       >
                         Criar atividade
@@ -554,7 +593,13 @@ export default function ProjectDetailPage() {
                         )}
                       >
                         <button
-                          onClick={() => toggleActivityMut.mutate({ projectId: id, activityId: act.id })}
+                          onClick={() => 
+                            toast.promise(toggleActivityMut.mutateAsync({ projectId: id, activityId: act.id }), {
+                              loading: act.done ? "Reabrindo atividade..." : "Concluindo atividade...",
+                              success: act.done ? "Atividade reaberta!" : "Atividade finalizada!",
+                              error: "Erro ao atualizar status."
+                            })
+                          }
                           className="mt-0.5 flex-shrink-0 text-brand-600 hover:text-brand-800 transition-colors"
                         >
                           {act.done ? <CheckSquare size={18} /> : <Square size={18} />}
@@ -585,7 +630,12 @@ export default function ProjectDetailPage() {
                         </div>
                         {isOwner && (
                           <button
-                            onClick={() => deleteActivityMut.mutate({ projectId: id, activityId: act.id })}
+                            onClick={() => {
+                              toast("Excluir atividade?", {
+                                action: { label: "Excluir", onClick: () => toast.promise(deleteActivityMut.mutateAsync({ projectId: id, activityId: act.id }), { loading: "Excluindo...", success: "Atividade excluída.", error: "Erro ao excluir." }) },
+                                cancel: { label: "Cancelar", onClick: () => {} },
+                              });
+                            }}
                             className="flex-shrink-0 p-1.5 rounded-lg text-neutral-300 hover:text-danger-500 hover:bg-danger-50 transition-all"
                           >
                             <Trash2 size={14} />
@@ -635,7 +685,13 @@ export default function ProjectDetailPage() {
               </>
             ) : null}
             {isMember && !isOwner && (
-              <Button variant="ghost" className="w-full text-danger-500 hover:bg-danger-50 hover:text-danger-700 mt-1" loading={leaveMut.isPending} onClick={() => { if (confirm("Tem certeza que deseja sair deste projeto?")) leaveMut.mutate(id); }}>
+              <Button variant="ghost" className="w-full text-danger-500 hover:bg-danger-50 hover:text-danger-700 mt-1" loading={leaveMut.isPending} onClick={() => {
+                  toast("Deseja sair do grupo?", {
+                    description: "Você perderá acesso às atividades exclusivas e não será mais considerado um membro.",
+                    action: { label: "Sair do grupo", onClick: () => toast.promise(leaveMut.mutateAsync(id), { loading: "Saindo...", success: "Você saiu do projeto.", error: "Erro ao processar." }) },
+                    cancel: { label: "Cancelar", onClick: () => {} },
+                  });
+              }}>
                 <LogOut size={15} /> Sair do grupo
               </Button>
             )}
@@ -657,7 +713,12 @@ export default function ProjectDetailPage() {
                   {m.id === project.ownerId ? (
                     <span className="text-[10px] bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 px-1.5 py-0.5 rounded font-semibold">Criador</span>
                   ) : isOwner ? (
-                    <button onClick={() => { if (confirm(`Remover ${m.name} do projeto?`)) removeMemberMut.mutate({ projectId: id, userId: m.id }); }} className="p-1 rounded-md text-neutral-300 hover:text-danger-500 hover:bg-danger-50 transition-all"><UserMinus size={13} /></button>
+                    <button onClick={() => {
+                        toast(`Remover ${m.name} do projeto?`, {
+                          action: { label: "Remover", onClick: () => toast.promise(removeMemberMut.mutateAsync({ projectId: id, userId: m.id }), { loading: "Removendo...", success: "Membro removido.", error: "Erro ao remover membro." }) },
+                          cancel: { label: "Cancelar", onClick: () => {} },
+                        });
+                      }} className="p-1 rounded-md text-neutral-300 hover:text-danger-500 hover:bg-danger-50 transition-all"><UserMinus size={13} /></button>
                   ) : null}
                 </div>
               ))}

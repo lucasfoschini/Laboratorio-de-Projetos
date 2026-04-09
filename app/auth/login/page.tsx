@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, FlaskConical, Mail, Lock, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 import { Input, Button } from "@/components/ui";
 import { loginSchema, type LoginSchema } from "@/lib/schemas";
 import { useAuth } from "@/contexts/auth";
@@ -31,12 +32,16 @@ export default function LoginPage() {
       const body   = err?.response?.data;
 
       if (status === 429) {
-        setApiError(body?.message ?? "Muitas tentativas. Tente novamente mais tarde.");
+        const msg = body?.message ?? "Muitas tentativas. Tente novamente em 15 minutos.";
+        setApiError(msg);
         return;
       }
 
-      const msg = body?.message ?? "Erro ao fazer login. Tente novamente.";
-      setApiError(msg === "Invalid credentials" ? "E-mail ou senha incorretos." : msg);
+      const msg = body?.message === "Invalid credentials" || body?.message === "Credenciais inválidas"
+        ? "E-mail ou senha incorretos. Verifique e tente novamente."
+        : (body?.message ?? "Erro ao fazer login. Tente novamente.");
+
+      setApiError(msg);
     }
   };
 
@@ -112,11 +117,7 @@ export default function LoginPage() {
               {errors.password && <p className="text-xs text-danger-500">{errors.password.message}</p>}
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="rounded border-neutral-300 text-brand-600" />
-                <span className="text-sm text-neutral-600 dark:text-neutral-400">Lembrar de mim</span>
-              </label>
+            <div className="flex justify-end">
               <Link href="/auth/esqueci-senha" className="text-sm text-brand-600 font-medium hover:text-brand-800 transition-colors">
                 Esqueceu a senha?
               </Link>

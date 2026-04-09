@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import NextImage from "next/image";
+import { toast } from "sonner";
 import {
   ArrowRight, Bell, BookmarkCheck, CheckCircle2, Clock,
   FlaskConical, LayoutDashboard, Loader2, PlusCircle, Settings,
@@ -214,8 +215,11 @@ function DashboardContent({ initialTab }: { initialTab: string }) {
         linkedin:    profileForm.linkedin    || undefined,
       });
       setEditingProfile(false);
+      toast.success("Perfil atualizado com sucesso!");
     } catch (err: any) {
-      setProfileError(err?.response?.data?.message ?? "Erro ao salvar perfil.");
+      const msg = err?.response?.data?.message ?? "Erro ao salvar perfil.";
+      setProfileError(msg);
+      toast.error("Erro ao salvar perfil", { description: msg });
     } finally {
       setProfileLoading(false);
     }
@@ -224,18 +228,28 @@ function DashboardContent({ initialTab }: { initialTab: string }) {
   // Função centralizada para revisar solicitações — rastreia o ID sendo processado
   const handleReview = (id: string, status: "APPROVED" | "REJECTED") => {
     setProcessingReqId(id);
-    reviewMut.mutate({ id, status });
+    reviewMut.mutateAsync({ id, status })
+      .then(() => {
+        toast.success(status === "APPROVED" ? "Solicitação aprovada!" : "Solicitação rejeitada.");
+      })
+      .catch(() => {
+        toast.error("Erro ao processar solicitação", { description: "Tente novamente." });
+      });
   };
 
   // Funções centralizadas para aprovar/recusar publicações — rastreiam o ID sendo processado
   const handleApprovePub = (id: string) => {
     setProcessingPubId(id);
-    approvePubMut.mutate(id);
+    approvePubMut.mutateAsync(id)
+      .then(() => toast.success("Publicação aprovada e publicada!"))
+      .catch(() => toast.error("Erro ao aprovar publicação", { description: "Tente novamente." }));
   };
 
   const handleRejectPub = (id: string, reason?: string) => {
     setProcessingPubId(id);
-    rejectPubMut.mutate({ id, reason });
+    rejectPubMut.mutateAsync({ id, reason })
+      .then(() => toast.success("Publicação recusada. O autor será notificado."))
+      .catch(() => toast.error("Erro ao recusar publicação", { description: "Tente novamente." }));
   };
 
   const ownedProjects  = myProjects.filter((p: any) => p.isOwner);
@@ -565,7 +579,21 @@ function DashboardContent({ initialTab }: { initialTab: string }) {
                       <div key={p.id} className="relative group">
                         <ProjectCard project={p} />
                         <button
-                          onClick={() => { if (confirm("Excluir este projeto?")) deleteMut.mutate(p.id); }}
+                          onClick={() => {
+                            toast("Excluir este projeto?", {
+                              description: `"${p.title}" será removido permanentemente.`,
+                              action: {
+                                label: "Excluir",
+                                onClick: () =>
+                                  toast.promise(deleteMut.mutateAsync(p.id), {
+                                    loading: "Excluindo projeto...",
+                                    success: "Projeto excluído com sucesso.",
+                                    error: "Erro ao excluir projeto.",
+                                  }),
+                              },
+                              cancel: { label: "Cancelar", onClick: () => {} },
+                            });
+                          }}
                           className="absolute top-3 right-3 p-1.5 rounded-lg bg-white/80 dark:bg-neutral-800/80 text-neutral-400 opacity-0 group-hover:opacity-100 hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-950 transition-all shadow-sm"
                         >
                           <Trash2 size={13} />
@@ -753,7 +781,16 @@ function DashboardContent({ initialTab }: { initialTab: string }) {
                           </div>
                           <Badge variant={s.variant} className="flex-shrink-0">{s.label}</Badge>
                           {req.status === "pending" && (
-                            <button onClick={() => cancelMut.mutate(req.id)} className="p-1.5 rounded-lg text-neutral-400 hover:text-danger-500 hover:bg-danger-50 transition-all flex-shrink-0">
+                            <button
+                              onClick={() =>
+                                toast.promise(cancelMut.mutateAsync(req.id), {
+                                  loading: "Cancelando...",
+                                  success: "Solicitação cancelada.",
+                                  error: "Erro ao cancelar solicitação.",
+                                })
+                              }
+                              className="p-1.5 rounded-lg text-neutral-400 hover:text-danger-500 hover:bg-danger-50 transition-all flex-shrink-0"
+                            >
                               <XCircle size={14} />
                             </button>
                           )}

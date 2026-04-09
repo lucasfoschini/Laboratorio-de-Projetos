@@ -45,7 +45,8 @@ api.interceptors.response.use(
     }
 
     // 401: tenta renovar via refresh token (cookie HttpOnly enviado automaticamente)
-    if (error.response?.status === 401 && !orig._retry) {
+    // Ignora requisições originárias do fluxo de login (credeciais incorretas já devolvem 401)
+    if (error.response?.status === 401 && !orig._retry && !orig.url?.includes("/auth/login")) {
       if (typeof window === "undefined") return Promise.reject(error);
 
       if (isRefreshing) {

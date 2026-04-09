@@ -56,6 +56,52 @@ export function useSSE(userId: string | undefined) {
       qc.invalidateQueries({ queryKey: ["notifications"] });
     });
 
+    // ── Eventos de Domínio Real-Time ──────────────────────────────────────────
+    
+    es.addEventListener("activities_updated", (e) => {
+      try {
+        const { projectId } = JSON.parse(e.data);
+        if (projectId) qc.invalidateQueries({ queryKey: ["project", projectId, "activities"] });
+      } catch {}
+    });
+
+    es.addEventListener("member_requests_updated", () => {
+      // Invalida a lista do solicitante e as pendências gerais do Dashboard do líder
+      qc.invalidateQueries({ queryKey: ["member-requests"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "requests", "pending"] });
+    });
+
+    es.addEventListener("project_updated", (e) => {
+      try {
+        const { projectId } = JSON.parse(e.data);
+        if (projectId) {
+          // Atualiza dados internos do projeto (ex: vagas, membros) se ele estiver aberto
+          qc.invalidateQueries({ queryKey: ["project", projectId] });
+        }
+        // Atualiza relatórios gerais do Dashboard se afetar visões do usuário
+        qc.invalidateQueries({ queryKey: ["dashboard", "projects"] });
+        qc.invalidateQueries({ queryKey: ["dashboard", "overview"] });
+      } catch {}
+    });
+
+    es.addEventListener("posts_updated", (e) => {
+      try {
+        const { projectId } = JSON.parse(e.data);
+        if (projectId) qc.invalidateQueries({ queryKey: ["project", projectId, "posts"] });
+      } catch {}
+    });
+
+    es.addEventListener("global_projects_updated", () => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    });
+
+    es.addEventListener("global_publications_updated", () => {
+      qc.invalidateQueries({ queryKey: ["publications"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "publications"] });
+      qc.invalidateQueries({ queryKey: ["dashboard", "overview"] });
+    });
+
     // ── Erro / reconexão ──────────────────────────────────────────────────────
     // O EventSource reconecta automaticamente com back-off nativo.
     // Não fechamos aqui — deixamos o browser gerenciar a reconexão.

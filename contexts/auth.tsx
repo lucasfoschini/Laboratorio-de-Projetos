@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { authApi } from "@/lib/api/axios";
 import { adaptUser } from "@/lib/adapters";
 import { useSSE } from "@/lib/hooks/useSSE";
@@ -86,7 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.clear(); // limpa todo o cache do React Query ao trocar de conta
       localStorage.removeItem(KEYS.user);
       setUser(null);
-      window.location.href = "/auth/login";
+      toast.success("Saiu com sucesso", { description: "Até a próxima!" });
+      router.push("/auth/login");
     }
   }, [router, queryClient]);
 

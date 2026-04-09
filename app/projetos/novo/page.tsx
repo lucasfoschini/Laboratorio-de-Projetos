@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, FlaskConical, Search, X } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Button } from "@/components/ui";
 import { projectSchema, type ProjectSchema } from "@/lib/schemas";
 import { useCreateProject } from "@/lib/hooks/useQueries";
@@ -116,9 +117,14 @@ export default function NovoProjetoPage() {
         tags:                data.tags ? data.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [],
         memberIds:           selectedMembers.map((m) => m.id),
       });
+      toast.success("Projeto publicado com sucesso!", {
+        description: "Seu projeto já está visível para outros usuários.",
+      });
       router.push("/dashboard");
     } catch (err: any) {
-      setApiError(err?.response?.data?.message ?? "Erro ao criar projeto.");
+      const msg = err?.response?.data?.message ?? "Erro ao criar projeto.";
+      setApiError(msg);
+      toast.error("Erro ao publicar projeto", { description: msg });
     }
   };
 

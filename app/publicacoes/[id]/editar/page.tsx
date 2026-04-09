@@ -325,7 +325,7 @@ export default function EditarPublicacaoPage() {
           zenodoLink: form.zenodoLink || undefined,
           tags:       form.tags ? form.tags.split(",").map(t => t.trim()).filter(Boolean) : [],
           projectId:  form.projectId || undefined,
-          authorIds:  selectedAuthors.map((a: any) => a.id),
+          authorIds:  Array.from(new Set([...selectedAuthors.map((a: any) => a.id), user?.id])).filter(Boolean),
         },
       });
 
@@ -427,18 +427,21 @@ export default function EditarPublicacaoPage() {
               <p className="text-xs text-neutral-400 mb-3">Clique nos membros para adicioná-los como autores.</p>
               <div className="flex flex-wrap gap-2">
                 {(selectedProject.members ?? []).map((m: any) => {
-                  const isSelected = selectedAuthors.some((a: any) => a.id === m.id);
+                  const isCurrentUser = m.id === user?.id;
+                  const isSelected = isCurrentUser || selectedAuthors.some((a: any) => a.id === m.id);
                   return (
                     <button
                       key={m.id}
                       type="button"
                       onClick={() => {
+                        if (isCurrentUser) return;
                         setSelectedAuthors((prev: any[]) =>
                           isSelected ? prev.filter((a: any) => a.id !== m.id) : [...prev, { id: m.id, name: m.name }]
                         );
                       }}
                       className={cn(
                         "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all",
+                        isCurrentUser && "cursor-default opacity-90",
                         isSelected
                           ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
                           : "bg-white dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-600 hover:border-emerald-300 hover:text-emerald-600",
@@ -454,7 +457,7 @@ export default function EditarPublicacaoPage() {
               </div>
               {selectedAuthors.length > 0 && (
                 <p className="text-xs text-emerald-600 mt-2">
-                  {selectedAuthors.length} membro{selectedAuthors.length !== 1 ? "s" : ""} selecionado{selectedAuthors.length !== 1 ? "s" : ""}
+                  {selectedAuthors.length + (selectedAuthors.some((a:any) => a.id === user?.id) ? 0 : 1)} membro(s) selecionado(s) - Você será incluído automaticamente.
                 </p>
               )}
             </div>
