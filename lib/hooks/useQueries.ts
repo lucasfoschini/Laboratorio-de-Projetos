@@ -640,8 +640,8 @@ export function useNotificationSummary(enabled = true) {
       };
     },
     enabled: !!user?.id && enabled,
-    staleTime: 1000 * 2, // Apenas 2 segundos
-    refetchInterval: 1000 * 15, // Polling a cada 15 segundos
+    staleTime: 1000 * 30,                  // 30 segundos
+    refetchInterval: 1000 * 60 * 5,        // 5 min — fallback de segurança (SSE é o mecanismo principal)
   });
 }
 

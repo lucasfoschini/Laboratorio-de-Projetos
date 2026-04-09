@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@/lib/api/axios";
 import { adaptUser } from "@/lib/adapters";
+import { useSSE } from "@/lib/hooks/useSSE";
 import type { User } from "@/types";
 
 // Apenas o user é persistido no localStorage — tokens trafegam via cookies HttpOnly
@@ -49,6 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  // Mantém conexão SSE ativa durante toda a sessão autenticada.
+  // O hook só conecta quando user?.id estiver definido e fecha automaticamente
+  // no logout (userId vira undefined → useEffect cleanup fecha o EventSource).
+  useSSE(user?.id ?? undefined);
 
   useEffect(() => {
     const stored = localStorage.getItem(KEYS.user);
