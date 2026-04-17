@@ -6,7 +6,7 @@ import { ProjectsPreview } from "@/components/sections/ProjectsPreview";
 import { HeroBanner } from "@/components/sections/HeroBanner";
 import { QuickAccess } from "@/components/sections/QuickAccess";
 
-export const metadata: Metadata = { title: "Início" };
+export const metadata: Metadata = { title: { absolute: "Lexa" } };
 
 const HOW = [
   { step: "1", title: "Analise os Projetos", desc: "Qualquer usuário pode pesquisar e analisar os projetos publicados na plataforma. Diretamente na seção dos Projetos ou pelas publicações, que são oriundas dos Projetos." },
