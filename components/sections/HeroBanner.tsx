@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Faster_One } from "next/font/google";
+import { Bungee_Spice } from "next/font/google";
 import { ArrowRight, FlaskConical, Zap, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui";
 import { useAuth } from "@/contexts/auth";
 
-const fasterOne = Faster_One({ subsets: ["latin"], weight: "400" });
+const bungeeSpice = Bungee_Spice({ subsets: ["latin"], weight: "400" });
 
 export function HeroBanner() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -20,7 +20,7 @@ export function HeroBanner() {
           <Zap size={12} className="text-brand-300" />
           <span className="text-xs font-semibold text-brand-100 tracking-wide">Plataforma de Projetos</span>
         </div>
-        <h1 className={`${fasterOne.className} text-3xl md:text-5xl font-extrabold text-white leading-tight tracking-tight mb-4`}>
+        <h1 className={`${bungeeSpice.className} text-3xl md:text-5xl font-extrabold text-white leading-tight tracking-tight mb-4`}>
           Laboratório de<br /><span className="text-brand-300">Extensão Ativo</span>
         </h1>
         <p className="text-brand-200 text-base leading-relaxed mb-8 max-w-md">
