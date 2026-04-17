@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Orbitron, Open_Sans } from "next/font/google";
+import { Exo, Open_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { QueryProvider } from "@/components/providers/QueryProvider";
@@ -7,7 +7,7 @@ import { AuthProvider } from "@/contexts/auth";
 import { ThemeProvider } from "@/contexts/theme";
 import { Navbar } from "@/components/layout/Navbar";
 
-const orbitron = Orbitron({ subsets: ["latin"], variable: "--font-syne", weight: ["600", "700", "800"] });
+const exo = Exo({ subsets: ["latin"], variable: "--font-syne", weight: ["600", "700", "800"] });
 const openSans = Open_Sans({ subsets: ["latin"], variable: "--font-dm-sans", weight: ["400", "500", "600"] });
 
 export const metadata: Metadata = {
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${orbitron.variable} ${openSans.variable}`} suppressHydrationWarning>
+    <html lang="pt-BR" className={`${exo.variable} ${openSans.variable}`} suppressHydrationWarning>
       <body className="bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 font-body antialiased transition-colors duration-200">
         <ThemeProvider>
           <QueryProvider>
