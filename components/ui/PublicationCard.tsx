@@ -93,7 +93,7 @@ export function PublicationCard({ publication, canDelete, canEdit, onDelete, isD
           </div>
 
           {/* Abstract */}
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed line-clamp-3 mb-4 break-words overflow-hidden">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed line-clamp-3 mb-4 break-words overflow-hidden whitespace-pre-line">
             {publication.abstract}
           </p>
 
