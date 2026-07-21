@@ -429,7 +429,7 @@ export default function ProjectDetailPage() {
                       ) : (
                         <>
                           <h3 className="font-display font-bold text-neutral-900 dark:text-neutral-100 mb-2">{post.title}</h3>
-                          <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">{post.content}</p>
+                          <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed whitespace-pre-line">{post.content}</p>
                           {(post.media ?? []).length > 0 && (
                             <div className="mt-4 flex flex-col gap-2">
                               {post.media.map((m: any) => {
