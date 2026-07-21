@@ -75,7 +75,7 @@ function FormReport({ form, set, projects }: any) {
       <FieldGroup label="Instituição"><input className={inp} value={form.institution} onChange={e => set({ ...form, institution: e.target.value })} placeholder="Nome da instituição" /></FieldGroup>
       <FieldGroup label="Link do PDF / Arquivo"><input className={inp} value={form.zenodoLink} onChange={e => set({ ...form, zenodoLink: e.target.value })} placeholder="https://..." /></FieldGroup>
       <FieldGroup label="DOI (se publicado)"><input className={inp} value={form.doi} onChange={e => set({ ...form, doi: e.target.value })} placeholder="10.xxxx/xxxxx" /></FieldGroup>
-      <FieldGroup label="Palavras-chave"><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Separadas por ponto" /></FieldGroup>
+      <FieldGroup label="Palavras-chave (separadas por ponto)"><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Ex: automação. controle" /></FieldGroup>
     </div>
   );
 }
@@ -106,7 +106,7 @@ function FormPresentation({ form, set, projects }: any) {
       <FieldGroup label="Carga horária (horas)"><input type="number" min="0" className={inp} value={form.workload} onChange={e => set({ ...form, workload: e.target.value })} placeholder="Ex: 4" /></FieldGroup>
       <FieldGroup label="Link do arquivo (PDF/PPT)"><input className={inp} value={form.zenodoLink} onChange={e => set({ ...form, zenodoLink: e.target.value })} placeholder="https://..." /></FieldGroup>
       <FieldGroup label="Link do certificado"><input className={inp} value={form.certificate} onChange={e => set({ ...form, certificate: e.target.value })} placeholder="https://..." /></FieldGroup>
-      <FieldGroup label="Tags"><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Separadas por ponto" /></FieldGroup>
+      <FieldGroup label="Palavras-chave (separadas por ponto)"><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Ex: apresentação. evento" /></FieldGroup>
     </div>
   );
 }
@@ -135,7 +135,7 @@ function FormThesis({ form, set, projects }: any) {
       <FieldGroup label="Link do PDF (arquivo final)"><input className={inp} value={form.zenodoLink} onChange={e => set({ ...form, zenodoLink: e.target.value })} placeholder="https://..." /></FieldGroup>
       <FieldGroup label="DOI (se publicado)"><input className={inp} value={form.doi} onChange={e => set({ ...form, doi: e.target.value })} placeholder="10.xxxx/xxxxx" /></FieldGroup>
       <FieldGroup label="Repositório GitHub"><input className={inp} value={form.github} onChange={e => set({ ...form, github: e.target.value })} placeholder="https://github.com/..." /></FieldGroup>
-      <FieldGroup label="Palavras-chave" required><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Separadas por ponto" /></FieldGroup>
+      <FieldGroup label="Palavras-chave (separadas por ponto)" required><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Ex: tcc. engenharia" /></FieldGroup>
     </div>
   );
 }
