@@ -435,7 +435,8 @@ export default function ProjectDetailPage() {
                               {post.media.map((m: any) => {
                                 const MIcon = MEDIA_ICON[m.type] ?? FileText;
                                 if (m.type === "IMAGE") return (
-                                  <NextImage key={m.id ?? m.url} src={m.url} alt={m.title ?? ""} width={800} height={400} className="w-full rounded-xl object-cover max-h-64" loading="lazy" />
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img key={m.id ?? m.url} src={m.url} alt={m.title ?? ""} className="max-w-full h-auto rounded-xl block" loading="lazy" />
                                 );
                                 return (
                                   <a key={m.id ?? m.url} href={m.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-700/50 border border-neutral-200 dark:border-neutral-600 hover:border-brand-300 transition-all text-sm">
