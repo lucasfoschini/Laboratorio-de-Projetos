@@ -311,7 +311,7 @@ export default function PublicationDetailPage() {
               <div className="space-y-4">
                 {pub.images.map((url, idx) => (
                   <div key={idx} className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl overflow-hidden shadow-card">
-                    <img src={url} alt={`Imagem ${idx + 1}`} className="w-full h-auto object-contain" loading="lazy" />
+                    <img src={url} alt={`Imagem ${idx + 1}`} className="max-w-full h-auto block" loading="lazy" />
                   </div>
                 ))}
               </div>
