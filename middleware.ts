@@ -28,11 +28,11 @@ export function middleware(request: NextRequest) {
     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
     const payload = JSON.parse(atob(base64));
 
-    // Apenas Professores podem abrir chamados nessas telas:
+    // Apenas professores podem criar ou editar projetos. A edição de
+    // publicações é autorizada pela API para os autores da publicação.
     const requiresProfessor = [
       /^\/projetos\/novo$/,
       /^\/projetos\/[^/]+\/editar$/,
-      /^\/publicacoes\/[^/]+\/editar$/,
     ];
 
     if (payload.role !== "PROFESSOR" && requiresProfessor.some((r) => r.test(pathname))) {

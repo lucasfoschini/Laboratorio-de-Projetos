@@ -12,7 +12,8 @@ import { projectSchema, type ProjectSchema } from "@/lib/schemas";
 import { useCreateProject } from "@/lib/hooks/useQueries";
 import { useAuth } from "@/contexts/auth";
 import { AREA_LABELS, cn } from "@/lib/utils";
-import { usersApi } from "@/lib/api/axios";
+import { usersApi, aiApi } from "@/lib/api/axios";
+import { Sparkles } from "lucide-react";
 
 const AREA_KEYS = [
   "controle_sistemas", "sistemas_mecatronicos", "acionamentos_eletricos",
@@ -45,6 +46,7 @@ export default function NovoProjetoPage() {
   const [selectedMembers, setSelectedMembers] = useState<any[]>([]);
   const [apiError, setApiError]               = useState("");
   const [selectedAreas, setSelectedAreas]     = useState<string[]>([]);
+  const [aiLoadingTags, setAiLoadingTags]     = useState(false);
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<ProjectSchema>({
     resolver: zodResolver(projectSchema),
@@ -186,7 +188,32 @@ export default function NovoProjetoPage() {
               )}
             </Field>
             <Field label="Tags (separadas por ponto)">
-              <input placeholder="Ex: soldagem. mecatrônica. automação" className={inputCls()} {...register("tags")} />
+              <div className="flex gap-2">
+                <input placeholder="Ex: soldagem. mecatrônica. automação" className={cn(inputCls(), "flex-1")} {...register("tags")} />
+                <button
+                  type="button"
+                  disabled={aiLoadingTags}
+                  onClick={async () => {
+                    const title = watch("title");
+                    const description = watch("description");
+                    if (!title) return toast.error("Preencha o título antes de sugerir tags.");
+                    setAiLoadingTags(true);
+                    try {
+                      const { data } = await aiApi.suggestTags({ title, description, area: selectedAreas[0] });
+                      setValue("tags", data.result);
+                      toast.success("Tags sugeridas pela IA!");
+                    } catch {
+                      toast.error("Erro ao gerar sugestões. Verifique a chave do Gemini.");
+                    } finally {
+                      setAiLoadingTags(false);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 h-10 rounded-xl border border-brand-200 dark:border-brand-800 bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400 text-xs font-semibold hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-all flex-shrink-0 disabled:opacity-50"
+                >
+                  <Sparkles size={13} />
+                  {aiLoadingTags ? "Gerando..." : "Sugerir"}
+                </button>
+              </div>
             </Field>
           </div>
         </div>

@@ -1,16 +1,19 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { BookOpen, Plus, Search, X, AlertCircle, UserPlus, Loader2, Clock } from "lucide-react";
+import { BookOpen, Plus, Search, X, AlertCircle, UserPlus, Loader2, Clock, Sparkles } from "lucide-react";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 import { Input, Button, EmptyState, Skeleton } from "@/components/ui";
 import { PublicationCard } from "@/components/ui/PublicationCard";
 import { ImageUpload } from "@/components/ui/ImageUpload";
+import { RichTextarea } from "@/components/ui/RichTextarea";
 import { TYPE_LABELS } from "@/lib/utils";
 import { usePublications, useCreatePublication, useDashboardProjects, useDeletePublication } from "@/lib/hooks/useQueries";
 import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
 import type { PublicationType } from "@/types";
+import { aiApi } from "@/lib/api/axios";
+import { toast } from "sonner";
 
 const TYPE_OPTIONS: { value: PublicationType | "all"; label: string }[] = [
   { value: "all",          label: "Todos"          },
@@ -19,6 +22,22 @@ const TYPE_OPTIONS: { value: PublicationType | "all"; label: string }[] = [
   { value: "presentation", label: "Apresentações"  },
   { value: "thesis",       label: "TCC/Monografia" },
 ];
+
+/* ── Botão de sugestão IA ──────────────────────────────────────── */
+
+function SuggestBtn({ onClick, loading }: { onClick: () => void; loading: boolean }) {
+  return (
+    <button
+      type="button"
+      disabled={loading}
+      onClick={onClick}
+      className="flex items-center gap-1.5 px-3 h-10 rounded-xl border border-brand-200 dark:border-brand-800 bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400 text-xs font-semibold hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-all flex-shrink-0 disabled:opacity-50"
+    >
+      <Sparkles size={13} />
+      {loading ? "Gerando..." : "Sugerir"}
+    </button>
+  );
+}
 
 /* ── Formulários por tipo ────────────────────────────────────────── */
 
@@ -36,11 +55,41 @@ const ta  = "w-full rounded-xl border border-neutral-300 dark:border-neutral-600
 const sel = "h-10 w-full rounded-xl border border-neutral-300 dark:border-neutral-600 px-3 text-sm bg-white dark:bg-neutral-800 dark:text-neutral-100 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all";
 
 function FormArticle({ form, set, projects }: any) {
+  const [loadingTags, setLoadingTags]         = useState(false);
+  const [loadingAbstract, setLoadingAbstract] = useState(false);
+
+  const suggestTags = async () => {
+    if (!form.title) return toast.error("Preencha o título antes de sugerir.");
+    setLoadingTags(true);
+    try {
+      const { data } = await aiApi.suggestTags({ title: form.title, description: form.abstract, pubType: "ARTICLE" });
+      set({ ...form, tags: data.result });
+      toast.success("Tags sugeridas!");
+    } catch { toast.error("Erro ao gerar sugestões."); }
+    finally { setLoadingTags(false); }
+  };
+
+  const suggestAbstract = async () => {
+    if (!form.title) return toast.error("Preencha o título antes de sugerir.");
+    setLoadingAbstract(true);
+    try {
+      const { data } = await aiApi.suggestAbstract({ title: form.title, pubType: "ARTICLE" });
+      set({ ...form, abstract: data.result });
+      toast.success("Resumo sugerido!");
+    } catch { toast.error("Erro ao gerar resumo."); }
+    finally { setLoadingAbstract(false); }
+  };
+
   return (
     <div className="grid md:grid-cols-2 gap-4">
       <FieldGroup label="Título" required><input className={inp} value={form.title} onChange={e => set({ ...form, title: e.target.value })} placeholder="Título do artigo" /></FieldGroup>
       <FieldGroup label="Ano" required><input type="number" min="1900" max="2100" className={inp} value={form.year} onChange={e => set({ ...form, year: e.target.value })} /></FieldGroup>
-      <FieldGroup label="Resumo / Abstract" required><textarea rows={3} className={cn(ta, "md:col-span-2")} value={form.abstract} onChange={e => set({ ...form, abstract: e.target.value })} placeholder="Descreva o conteúdo e contribuições..." /></FieldGroup>
+      <FieldGroup label="Resumo / Abstract" required>
+        <div className="flex gap-2 items-start">
+          <div className="flex-1"><RichTextarea rows={3} value={form.abstract} onChange={(v) => set({ ...form, abstract: v })} placeholder="Descreva o conteúdo e contribuições..." /></div>
+          <div className="pt-0.5"><SuggestBtn onClick={suggestAbstract} loading={loadingAbstract} /></div>
+        </div>
+      </FieldGroup>
       <FieldGroup label="Projeto vinculado" required>
         <select className={sel} value={form.projectId} onChange={e => set({ ...form, projectId: e.target.value })}>
           <option value="">Selecione um projeto</option>
@@ -50,17 +99,35 @@ function FormArticle({ form, set, projects }: any) {
       <FieldGroup label="Revista / Evento"><input className={inp} value={form.journal} onChange={e => set({ ...form, journal: e.target.value })} placeholder="Ex: IEEE Transactions, SBRC 2024" /></FieldGroup>
       <FieldGroup label="DOI"><input className={inp} value={form.doi} onChange={e => set({ ...form, doi: e.target.value })} placeholder="10.xxxx/xxxxx" /></FieldGroup>
       <FieldGroup label="Link Zenodo"><input className={inp} value={form.zenodoLink} onChange={e => set({ ...form, zenodoLink: e.target.value })} placeholder="https://zenodo.org/..." /></FieldGroup>
-      <FieldGroup label="Palavras-chave (separadas por ponto)"><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Ex: iot. machine learning" /></FieldGroup>
+      <FieldGroup label="Palavras-chave (separadas por ponto)">
+        <div className="flex gap-2"><input className={cn(inp, "flex-1")} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Ex: iot. machine learning" /><SuggestBtn onClick={suggestTags} loading={loadingTags} /></div>
+      </FieldGroup>
     </div>
   );
 }
 
 function FormReport({ form, set, projects }: any) {
+  const [loadingTags, setLoadingTags]         = useState(false);
+  const [loadingAbstract, setLoadingAbstract] = useState(false);
+  const suggestTags = async () => {
+    if (!form.title) return toast.error("Preencha o título antes de sugerir.");
+    setLoadingTags(true);
+    try { const { data } = await aiApi.suggestTags({ title: form.title, pubType: "REPORT" }); set({ ...form, tags: data.result }); toast.success("Tags sugeridas!"); }
+    catch { toast.error("Erro ao gerar sugestões."); } finally { setLoadingTags(false); }
+  };
+  const suggestAbstract = async () => {
+    if (!form.title) return toast.error("Preencha o título antes de sugerir.");
+    setLoadingAbstract(true);
+    try { const { data } = await aiApi.suggestAbstract({ title: form.title, pubType: "REPORT" }); set({ ...form, abstract: data.result }); toast.success("Resumo sugerido!"); }
+    catch { toast.error("Erro ao gerar resumo."); } finally { setLoadingAbstract(false); }
+  };
   return (
     <div className="grid md:grid-cols-2 gap-4">
       <FieldGroup label="Título" required><input className={inp} value={form.title} onChange={e => set({ ...form, title: e.target.value })} placeholder="Título do relatório" /></FieldGroup>
       <FieldGroup label="Ano" required><input type="number" min="1900" max="2100" className={inp} value={form.year} onChange={e => set({ ...form, year: e.target.value })} /></FieldGroup>
-      <FieldGroup label="Resumo" required><textarea rows={3} className={ta} value={form.abstract} onChange={e => set({ ...form, abstract: e.target.value })} placeholder="Descreva o conteúdo..." /></FieldGroup>
+      <FieldGroup label="Resumo" required>
+        <div className="flex gap-2 items-start"><div className="flex-1"><RichTextarea rows={3} value={form.abstract} onChange={(v) => set({ ...form, abstract: v })} placeholder="Descreva o conteúdo..." /></div><div className="pt-0.5"><SuggestBtn onClick={suggestAbstract} loading={loadingAbstract} /></div></div>
+      </FieldGroup>
       <div className="flex flex-col gap-4">
         <FieldGroup label="Projeto vinculado" required>
           <select className={sel} value={form.projectId} onChange={e => set({ ...form, projectId: e.target.value })}>
@@ -83,17 +150,35 @@ function FormReport({ form, set, projects }: any) {
       <FieldGroup label="Instituição"><input className={inp} value={form.institution} onChange={e => set({ ...form, institution: e.target.value })} placeholder="Nome da instituição" /></FieldGroup>
       <FieldGroup label="Link do PDF / Arquivo"><input className={inp} value={form.zenodoLink} onChange={e => set({ ...form, zenodoLink: e.target.value })} placeholder="https://..." /></FieldGroup>
       <FieldGroup label="DOI (se publicado)"><input className={inp} value={form.doi} onChange={e => set({ ...form, doi: e.target.value })} placeholder="10.xxxx/xxxxx" /></FieldGroup>
-      <FieldGroup label="Palavras-chave (separadas por ponto)"><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Ex: automação. controle" /></FieldGroup>
+      <FieldGroup label="Palavras-chave (separadas por ponto)">
+        <div className="flex gap-2"><input className={cn(inp, "flex-1")} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Ex: automação. controle" /><SuggestBtn onClick={suggestTags} loading={loadingTags} /></div>
+      </FieldGroup>
     </div>
   );
 }
 
 function FormPresentation({ form, set, projects }: any) {
+  const [loadingTags, setLoadingTags]         = useState(false);
+  const [loadingAbstract, setLoadingAbstract] = useState(false);
+  const suggestTags = async () => {
+    if (!form.title) return toast.error("Preencha o título antes de sugerir.");
+    setLoadingTags(true);
+    try { const { data } = await aiApi.suggestTags({ title: form.title, pubType: "PRESENTATION" }); set({ ...form, tags: data.result }); toast.success("Tags sugeridas!"); }
+    catch { toast.error("Erro ao gerar sugestões."); } finally { setLoadingTags(false); }
+  };
+  const suggestAbstract = async () => {
+    if (!form.title) return toast.error("Preencha o título antes de sugerir.");
+    setLoadingAbstract(true);
+    try { const { data } = await aiApi.suggestAbstract({ title: form.title, pubType: "PRESENTATION" }); set({ ...form, abstract: data.result }); toast.success("Resumo sugerido!"); }
+    catch { toast.error("Erro ao gerar resumo."); } finally { setLoadingAbstract(false); }
+  };
   return (
     <div className="grid md:grid-cols-2 gap-4">
       <FieldGroup label="Título" required><input className={inp} value={form.title} onChange={e => set({ ...form, title: e.target.value })} placeholder="Título da apresentação" /></FieldGroup>
       <FieldGroup label="Data" required><input type="date" className={inp} value={form.eventDate} onChange={e => set({ ...form, eventDate: e.target.value })} /></FieldGroup>
-      <FieldGroup label="Resumo" required><textarea rows={3} className={ta} value={form.abstract} onChange={e => set({ ...form, abstract: e.target.value })} placeholder="Descreva o conteúdo..." /></FieldGroup>
+      <FieldGroup label="Resumo" required>
+        <div className="flex gap-2 items-start"><div className="flex-1"><RichTextarea rows={3} value={form.abstract} onChange={(v) => set({ ...form, abstract: v })} placeholder="Descreva o conteúdo..." /></div><div className="pt-0.5"><SuggestBtn onClick={suggestAbstract} loading={loadingAbstract} /></div></div>
+      </FieldGroup>
       <div className="flex flex-col gap-4">
         <FieldGroup label="Evento *"><input className={inp} value={form.journal} onChange={e => set({ ...form, journal: e.target.value })} placeholder="Ex: SBRC 2025, TechConf..." /></FieldGroup>
       </div>
@@ -115,17 +200,35 @@ function FormPresentation({ form, set, projects }: any) {
       <FieldGroup label="Carga horária (horas)"><input type="number" min="0" className={inp} value={form.workload} onChange={e => set({ ...form, workload: e.target.value })} placeholder="Ex: 4" /></FieldGroup>
       <FieldGroup label="Link do arquivo (PDF/PPT)"><input className={inp} value={form.zenodoLink} onChange={e => set({ ...form, zenodoLink: e.target.value })} placeholder="https://..." /></FieldGroup>
       <FieldGroup label="Link do certificado"><input className={inp} value={form.certificate} onChange={e => set({ ...form, certificate: e.target.value })} placeholder="https://..." /></FieldGroup>
-      <FieldGroup label="Palavras-chave (separadas por ponto)"><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Ex: apresentação. evento" /></FieldGroup>
+      <FieldGroup label="Palavras-chave (separadas por ponto)">
+        <div className="flex gap-2"><input className={cn(inp, "flex-1")} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Ex: apresentação. evento" /><SuggestBtn onClick={suggestTags} loading={loadingTags} /></div>
+      </FieldGroup>
     </div>
   );
 }
 
 function FormThesis({ form, set, projects }: any) {
+  const [loadingTags, setLoadingTags]         = useState(false);
+  const [loadingAbstract, setLoadingAbstract] = useState(false);
+  const suggestTags = async () => {
+    if (!form.title) return toast.error("Preencha o título antes de sugerir.");
+    setLoadingTags(true);
+    try { const { data } = await aiApi.suggestTags({ title: form.title, pubType: "THESIS" }); set({ ...form, tags: data.result }); toast.success("Tags sugeridas!"); }
+    catch { toast.error("Erro ao gerar sugestões."); } finally { setLoadingTags(false); }
+  };
+  const suggestAbstract = async () => {
+    if (!form.title) return toast.error("Preencha o título antes de sugerir.");
+    setLoadingAbstract(true);
+    try { const { data } = await aiApi.suggestAbstract({ title: form.title, pubType: "THESIS" }); set({ ...form, abstract: data.result }); toast.success("Resumo sugerido!"); }
+    catch { toast.error("Erro ao gerar resumo."); } finally { setLoadingAbstract(false); }
+  };
   return (
     <div className="grid md:grid-cols-2 gap-4">
       <FieldGroup label="Título" required><input className={inp} value={form.title} onChange={e => set({ ...form, title: e.target.value })} placeholder="Título do TCC/monografia" /></FieldGroup>
       <FieldGroup label="Ano" required><input type="number" min="1900" max="2100" className={inp} value={form.year} onChange={e => set({ ...form, year: e.target.value })} /></FieldGroup>
-      <FieldGroup label="Resumo" required><textarea rows={3} className={ta} value={form.abstract} onChange={e => set({ ...form, abstract: e.target.value })} placeholder="Descreva o conteúdo e contribuições..." /></FieldGroup>
+      <FieldGroup label="Resumo" required>
+        <div className="flex gap-2 items-start"><div className="flex-1"><RichTextarea rows={3} value={form.abstract} onChange={(v) => set({ ...form, abstract: v })} placeholder="Descreva o conteúdo e contribuições..." /></div><div className="pt-0.5"><SuggestBtn onClick={suggestAbstract} loading={loadingAbstract} /></div></div>
+      </FieldGroup>
       <div className="flex flex-col gap-4">
         <FieldGroup label="Orientador *"><input className={inp} value={form.advisor} onChange={e => set({ ...form, advisor: e.target.value })} placeholder="Nome do orientador" /></FieldGroup>
       </div>
@@ -145,7 +248,9 @@ function FormThesis({ form, set, projects }: any) {
       <FieldGroup label="Link do PDF (arquivo final)"><input className={inp} value={form.zenodoLink} onChange={e => set({ ...form, zenodoLink: e.target.value })} placeholder="https://..." /></FieldGroup>
       <FieldGroup label="DOI (se publicado)"><input className={inp} value={form.doi} onChange={e => set({ ...form, doi: e.target.value })} placeholder="10.xxxx/xxxxx" /></FieldGroup>
       <FieldGroup label="Repositório GitHub"><input className={inp} value={form.github} onChange={e => set({ ...form, github: e.target.value })} placeholder="https://github.com/..." /></FieldGroup>
-      <FieldGroup label="Palavras-chave (separadas por ponto)" required><input className={inp} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Ex: tcc. engenharia" /></FieldGroup>
+      <FieldGroup label="Palavras-chave (separadas por ponto)" required>
+        <div className="flex gap-2"><input className={cn(inp, "flex-1")} value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="Ex: tcc. engenharia" /><SuggestBtn onClick={suggestTags} loading={loadingTags} /></div>
+      </FieldGroup>
     </div>
   );
 }
@@ -299,6 +404,13 @@ export default function PublicacoesPage() {
       setForm({ ...EMPTY_FORM });
       setSelectedAuthors([]);
       setShowForm(false);
+      if (user?.role === "student") {
+        toast.success("Publicação enviada para aprovação", {
+          description: "O professor responsável foi notificado.",
+        });
+      } else {
+        toast.success("Publicação criada com sucesso");
+      }
     } catch (err: any) {
       setFormError(err?.response?.data?.message ?? "Erro ao criar publicação.");
     }
@@ -427,11 +539,11 @@ export default function PublicacoesPage() {
             {/* ── Conteúdo completo + Imagens (comum a todos os tipos) ── */}
             <div className="mt-5 pt-4 border-t border-neutral-100 dark:border-neutral-700 grid gap-4">
               <FieldGroup label="Texto completo / Explicação detalhada">
-                <textarea
+                <RichTextarea
                   rows={6}
-                  className={ta}
+                  minRows={6}
                   value={form.content}
-                  onChange={e => setForm({ ...form, content: e.target.value })}
+                  onChange={(v) => setForm({ ...form, content: v })}
                   placeholder="Adicione uma explicação mais extensa, metodologia, resultados, conclusões... Para inserir imagens inline use: ![descrição](url) ou cole a URL da imagem em uma linha separada."
                 />
                 <p className="text-xs text-neutral-400 mt-1">Este texto aparecerá na página de detalhe, abaixo do resumo. Use <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded text-[11px]">![descrição](url)</code> para imagens inline.</p>
@@ -532,7 +644,7 @@ export default function PublicacoesPage() {
             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-neutral-100 dark:border-neutral-700">
               <Button variant="secondary" onClick={resetForm}>Cancelar</Button>
               <Button onClick={handleCreate} loading={createMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700">
-                Publicar {TYPE_LABELS_FORM[pubType]}
+                {user?.role === "student" ? "Enviar para aprovação" : `Publicar ${TYPE_LABELS_FORM[pubType]}`}
               </Button>
             </div>
           </div>

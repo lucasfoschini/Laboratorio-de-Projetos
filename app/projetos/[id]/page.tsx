@@ -27,6 +27,7 @@ import {
 import { memberRequestsApi } from "@/lib/api/axios";
 import { useAuth } from "@/contexts/auth";
 import { UserProfileModal } from "@/components/ui/UserProfileModal";
+import { RichTextarea } from "@/components/ui/RichTextarea";
 
 const joinSchema   = z.object({ message: z.string().min(30, "Descreva sua motivação (mín. 30 caracteres)").max(500) });
 const postSchema   = z.object({
@@ -145,10 +146,11 @@ export default function ProjectDetailPage() {
   const isOwner      = user?.id === project.ownerId;
   const isMember     = isOwner || project.members?.some((m: any) => m.id === user?.id);
   const subscribed   = subStatus?.subscribed ?? false;
-  const isOpen       = project.status === "open";
-  const isInProgress = project.status === "in_progress";
-  const isFull       = (project.enrolled ?? 0) >= (project.vacancies ?? 0);
-  const canJoin      = isAuthenticated && !isOwner && !isMember && !joinDone && (isOpen || isInProgress) && !isFull;
+  const isOpen            = project.status === "open";
+  const isInProgress      = project.status === "in_progress";
+  const isFull            = (project.enrolled ?? 0) >= (project.vacancies ?? 0);
+  const isDeadlinePassed  = project.applicationDeadline ? new Date() > new Date(project.applicationDeadline) : false;
+  const canJoin           = isAuthenticated && !isOwner && !isMember && !joinDone && (isOpen || isInProgress) && !isFull && !isDeadlinePassed;
   const canPost      = isAuthenticated && isMember;
   const posts        = postsData?.posts ?? [];
 
@@ -170,6 +172,11 @@ export default function ProjectDetailPage() {
       toast.success("Solicitação enviada!", { description: "O criador do projeto será notificado." });
     } catch (err: any) {
       const msg = (err?.response?.data?.message ?? "") as string;
+      if (err?.response?.status === 429) {
+        setJoinError(msg || "Você atingiu o limite de recusas para este projeto.");
+        toast.error("Solicitação bloqueada", { description: msg || "Você atingiu o limite de recusas para este projeto." });
+        return;
+      }
       const isDuplicate = err?.response?.status === 409 || /já|already|duplicate|existente|pendente/i.test(msg);
       if (isDuplicate) {
         try {
@@ -328,7 +335,12 @@ export default function ProjectDetailPage() {
                 <div className="flex flex-col gap-3">
                   <input placeholder="Título da atualização *" className="w-full h-10 rounded-xl border border-neutral-300 dark:border-neutral-600 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all bg-white dark:bg-neutral-700 dark:text-neutral-100" {...postForm.register("title")} />
                   {postForm.formState.errors.title && <p className="text-xs text-danger-500 -mt-2">{postForm.formState.errors.title.message}</p>}
-                  <textarea rows={4} placeholder="Descreva o progresso, conquistas ou novidades do projeto..." className="w-full rounded-xl border border-neutral-300 dark:border-neutral-600 p-3 text-sm resize-none outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all bg-white dark:bg-neutral-700 dark:text-neutral-100" {...postForm.register("content")} />
+                  <RichTextarea
+                    rows={4}
+                    placeholder="Descreva o progresso, conquistas ou novidades do projeto..."
+                    value={postForm.watch("content") ?? ""}
+                    onChange={(v) => postForm.setValue("content", v, { shouldValidate: true })}
+                  />
                   <div className="bg-neutral-50 dark:bg-neutral-700/50 rounded-xl p-3 border border-neutral-200 dark:border-neutral-600">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">Mídias (imagem, vídeo, artigo, documento)</p>
@@ -398,7 +410,11 @@ export default function ProjectDetailPage() {
                         <form onSubmit={postForm.handleSubmit((data) => handleEditPost(post.id, data))} className="flex flex-col gap-3">
                           {postError && <div className="flex items-center gap-2 p-3 rounded-xl bg-danger-50 text-danger-700 text-xs"><AlertCircle size={13} /> {postError}</div>}
                           <input placeholder="Título" className="w-full h-10 rounded-xl border border-neutral-300 dark:border-neutral-600 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all bg-white dark:bg-neutral-700 dark:text-neutral-100" {...postForm.register("title")} />
-                          <textarea rows={4} className="w-full rounded-xl border border-neutral-300 dark:border-neutral-600 p-3 text-sm resize-none outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all bg-white dark:bg-neutral-700 dark:text-neutral-100" {...postForm.register("content")} />
+                          <RichTextarea
+                            rows={4}
+                            value={postForm.watch("content") ?? ""}
+                            onChange={(v) => postForm.setValue("content", v, { shouldValidate: true })}
+                          />
                           <div className="bg-neutral-50 dark:bg-neutral-700/50 rounded-xl p-3 border border-neutral-200 dark:border-neutral-600">
                             <div className="flex items-center justify-between mb-2">
                               <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">Mídias</p>
@@ -667,6 +683,10 @@ export default function ProjectDetailPage() {
             )}
             {joinDone ? (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-success-50 border border-success-200 text-success-700 text-sm"><CheckCircle2 size={15} /> Solicitação enviada!</div>
+            ) : isDeadlinePassed && !isMember && !isOwner ? (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 text-neutral-500 dark:text-neutral-400 text-sm">
+                <AlertCircle size={15} className="flex-shrink-0" /> Prazo de inscrições encerrado
+              </div>
             ) : canJoin ? (
               <>
                 {!showJoinForm ? (

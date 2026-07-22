@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import NextImage from "next/image";
+import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { Bell, BellDot, FlaskConical, LayoutDashboard, LogIn, LogOut, Menu, MessageSquare, Moon, Settings, Sun, UserCircle, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -33,6 +34,11 @@ function getDismissedIds(): string[] {
 function addDismissedId(id: string) {
   const ids = getDismissedIds();
   if (!ids.includes(id)) { ids.push(id); localStorage.setItem(NOTIF_DISMISSED_KEY, JSON.stringify(ids)); }
+}
+
+function publicationSuggestionHref(message?: string): Route {
+  const publicationId = message?.match(/\[pubId:([^\]]+)\]/)?.[1];
+  return publicationId ? `/publicacoes/${publicationId}/editar` as Route : "/dashboard";
 }
 
 function NotificationBell() {
@@ -365,7 +371,9 @@ function NotificationBell() {
                               {isExpanded && (
                                 <Link
                                   href={
-                                    notif.type === "PUBLICATION_SUGGESTION" ? "/dashboard" :
+                                    notif.type === "PUBLICATION_SUGGESTION" ||
+                                    notif.type === "PUBLICATION_SUBMITTED" ||
+                                    notif.type === "PUBLICATION_RESUBMITTED" ? publicationSuggestionHref(notif.message) :
                                     notif.type === "PUBLICATION_PENDING"    ? "/dashboard?tab=requests" :
                                     notif.type === "JOIN_REQUEST"           ? "/dashboard?tab=requests" :
                                     notif.projectId ? `/projetos/${notif.projectId}` :

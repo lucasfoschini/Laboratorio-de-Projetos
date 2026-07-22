@@ -15,6 +15,7 @@ import { cn, TYPE_LABELS } from "@/lib/utils";
 import { usePublication, useSuggestPublication } from "@/lib/hooks/useQueries";
 import { useAuth } from "@/contexts/auth";
 import type { Publication, PublicationType } from "@/types";
+import { toast } from "sonner";
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
   article:      <FileText size={20} />,
@@ -184,9 +185,16 @@ export default function PublicationDetailPage() {
                 loading={suggestMut.isPending}
                 disabled={!suggestionText.trim()}
                 onClick={async () => {
-                  await suggestMut.mutateAsync({ id: pub.id, suggestion: suggestionText });
-                  setShowSuggest(false);
-                  router.push("/dashboard?tab=requests");
+                  try {
+                    await suggestMut.mutateAsync({ id: pub.id, suggestion: suggestionText });
+                    toast.success("Sugestões enviadas", {
+                      description: "Os autores foram notificados para revisar a publicação.",
+                    });
+                    setShowSuggest(false);
+                    router.push("/dashboard?tab=requests");
+                  } catch {
+                    toast.error("Não foi possível enviar as sugestões");
+                  }
                 }}
               >
                 <MessageSquare size={14} /> Enviar sugestão

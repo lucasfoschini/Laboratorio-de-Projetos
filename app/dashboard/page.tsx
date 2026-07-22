@@ -78,6 +78,45 @@ function RejectModal({
   );
 }
 
+function RejectRequestConfirmModal({
+  name,
+  projectTitle,
+  onConfirm,
+  onCancel,
+}: {
+  name: string;
+  projectTitle: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl p-6 w-full max-w-md shadow-card-lg mx-4">
+        <h3 className="font-display text-base font-semibold text-neutral-900 dark:text-neutral-100 mb-1">
+          Confirmar recusa
+        </h3>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+          {name} já foi recusado 2 vezes em "{projectTitle}". Se você confirmar agora, essa pessoa ficará proibida de enviar novas solicitações para este projeto.
+        </p>
+        <div className="flex gap-2 mt-4 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 rounded-xl text-sm text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 rounded-xl bg-danger-500 text-white text-sm font-semibold hover:bg-danger-600 transition-colors"
+          >
+            Confirmar recusa
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Componente: publicações pendentes por projeto ── */
 function PendingPublicationsSection({
   projectId, projectTitle, onApprove, onReject, onRequestReject, processingPubId, isAnyProcessing,
@@ -140,6 +179,7 @@ function DashboardContent({ initialTab }: { initialTab: string }) {
   const router = useRouter();
 
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
+  const [rejectRequestTarget, setRejectRequestTarget] = useState<{ id: string; name: string; projectTitle: string } | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError,   setProfileError]   = useState("");
@@ -235,6 +275,20 @@ function DashboardContent({ initialTab }: { initialTab: string }) {
       .catch(() => {
         toast.error("Erro ao processar solicitação", { description: "Tente novamente." });
       });
+  };
+
+  const handleRequestReject = (req: any) => {
+    const rejectionCount = req.rejectionCount ?? 0;
+    if (rejectionCount >= 2) {
+      setRejectRequestTarget({
+        id: req.id,
+        name: req.user?.name ?? "Essa pessoa",
+        projectTitle: req.project?.title ?? "este projeto",
+      });
+      return;
+    }
+
+    handleReview(req.id, "REJECTED");
   };
 
   // Funções centralizadas para aprovar/recusar publicações — rastreiam o ID sendo processado
@@ -531,7 +585,7 @@ function DashboardContent({ initialTab }: { initialTab: string }) {
                           }
                         </button>
                         <button
-                          onClick={() => handleReview(req.id, "REJECTED")}
+                          onClick={() => handleRequestReject(req)}
                           disabled={isAnyProcessing}
                           className="p-1.5 rounded-lg bg-danger-500 text-white hover:bg-danger-600 hover:scale-110 transition-all duration-150 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
                         >
@@ -678,7 +732,7 @@ function DashboardContent({ initialTab }: { initialTab: string }) {
                                 className="flex-1"
                                 loading={isProcessing && reviewMut.isPending}
                                 disabled={isAnyProcessing}
-                                onClick={() => handleReview(req.id, "REJECTED")}
+                                onClick={() => handleRequestReject(req)}
                               >
                                 <XCircle size={13} /> Rejeitar
                               </Button>
@@ -858,6 +912,17 @@ function DashboardContent({ initialTab }: { initialTab: string }) {
             setRejectTarget(null);
           }}
           onCancel={() => setRejectTarget(null)}
+        />
+      )}
+      {rejectRequestTarget && (
+        <RejectRequestConfirmModal
+          name={rejectRequestTarget.name}
+          projectTitle={rejectRequestTarget.projectTitle}
+          onConfirm={() => {
+            handleReview(rejectRequestTarget.id, "REJECTED");
+            setRejectRequestTarget(null);
+          }}
+          onCancel={() => setRejectRequestTarget(null)}
         />
       )}
     </div>

@@ -54,11 +54,14 @@ interface ProjectCardProps {
 export function ProjectCard({ project, variant = "default" }: ProjectCardProps) {
   const queryClient = useQueryClient();
   const Icon = AREA_ICON[project.area] ?? Cpu;
-  const enrolled  = project.enrolled  ?? 0;
-  const vacancies = project.vacancies ?? 0;
-  const openSlots = Math.max(0, vacancies - enrolled);
-  const isFull    = openSlots === 0;
+  const enrolled     = project.enrolled  ?? 0;
+  const vacancies    = project.vacancies ?? 0;
+  const openSlots    = Math.max(0, vacancies - enrolled);
+  const isFull       = openSlots === 0;
   const occupancyPct = vacancies > 0 ? Math.min(100, Math.round((enrolled / vacancies) * 100)) : 100;
+  const isDeadlinePassed = (project as any).applicationDeadline
+    ? new Date() > new Date((project as any).applicationDeadline)
+    : false;
 
   const creator = (project as any).owner ?? (project as any).professor;
 
@@ -120,7 +123,9 @@ export function ProjectCard({ project, variant = "default" }: ProjectCardProps) 
               );
             })()}
           </div>
-          <Badge variant={STATUS_VARIANT[project.status]}>{STATUS_LABELS[project.status]}</Badge>
+          <Badge variant={STATUS_VARIANT[isDeadlinePassed && project.status === "open" ? "in_progress" : project.status]}>
+            {STATUS_LABELS[isDeadlinePassed && project.status === "open" ? "in_progress" : project.status]}
+          </Badge>
         </div>
 
         <h3 className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-[15px] leading-snug mb-2 group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors line-clamp-2 break-words">
@@ -151,13 +156,21 @@ export function ProjectCard({ project, variant = "default" }: ProjectCardProps) 
               <span className="text-neutral-400">{enrolled}/{vacancies} membro{enrolled !== 1 ? "s" : ""}</span>
               {isFull ? (
                 <span className="font-semibold text-danger-500">Lotado</span>
+              ) : isDeadlinePassed ? (
+                <span className="font-semibold text-neutral-400">Inscrições encerradas</span>
               ) : (
                 <span className="font-semibold text-success-600">{openSlots} vaga{openSlots !== 1 ? "s" : ""} aberta{openSlots !== 1 ? "s" : ""}</span>
               )}
             </div>
-            <div className={cn("rounded-full overflow-hidden transition-all", isFull ? "h-2.5 bg-danger-100" : "h-1.5 bg-neutral-100")}>
+            <div className={cn(
+              "rounded-full overflow-hidden transition-all",
+              isFull ? "h-2.5 bg-danger-100" : "h-1.5 bg-neutral-100"
+            )}>
               <div
-                className={cn("h-full rounded-full transition-all", isFull ? "bg-danger-400" : "bg-brand-400")}
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  isFull ? "bg-danger-400" : isDeadlinePassed ? "bg-neutral-300 dark:bg-neutral-600" : "bg-brand-400"
+                )}
                 style={{ width: `${occupancyPct}%` }}
               />
             </div>

@@ -163,3 +163,10 @@ export const notificationsApi = {
   markReadAll: ()                     => api.patch("/notifications/read-all"),
   deleteAllRead: ()                   => api.delete("/notifications/read"),
 };
+
+export const aiApi = {
+  suggestTags:     (d: { title: string; description?: string; area?: string; pubType?: string }) =>
+    api.post<{ result: string }>("/ai/suggest-tags", d),
+  suggestAbstract: (d: { title: string; description?: string; area?: string; pubType?: string }) =>
+    api.post<{ result: string }>("/ai/suggest-abstract", d),
+};

@@ -6,9 +6,11 @@ import Link from "next/link";
 import { ArrowLeft, AlertCircle, Pencil, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui";
 import { ImageUpload } from "@/components/ui/ImageUpload";
+import { RichTextarea } from "@/components/ui/RichTextarea";
 import { usePublication, useUpdatePublication, useDashboardProjects, useMarkNotificationRead, useNotificationSummary } from "@/lib/hooks/useQueries";
 import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 /* ── Helpers de formulário (mesmos da page de criação) ────────────── */
 
@@ -34,7 +36,7 @@ function FormArticle({ form, set, projects }: any) {
     <div className="grid md:grid-cols-2 gap-4">
       <FieldGroup label="Título" required><input className={inp} value={form.title} onChange={e => set({ ...form, title: e.target.value })} placeholder="Título do artigo" /></FieldGroup>
       <FieldGroup label="Ano" required><input type="number" min="1900" max="2100" className={inp} value={form.year} onChange={e => set({ ...form, year: e.target.value })} /></FieldGroup>
-      <FieldGroup label="Resumo / Abstract" required><textarea rows={3} className={cn(ta, "md:col-span-2")} value={form.abstract} onChange={e => set({ ...form, abstract: e.target.value })} placeholder="Descreva o conteúdo e contribuições..." /></FieldGroup>
+      <FieldGroup label="Resumo / Abstract" required><RichTextarea rows={3} value={form.abstract} onChange={(v) => set({ ...form, abstract: v })} placeholder="Descreva o conteúdo e contribuições..." /></FieldGroup>
       <FieldGroup label="Projeto vinculado" required>
         <div className="h-10 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 px-3 flex items-center bg-neutral-50 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 text-sm cursor-not-allowed opacity-75">
           {projects.find((p: any) => p.id === form.projectId)?.title ?? "Projeto vinculado"}
@@ -53,7 +55,7 @@ function FormReport({ form, set, projects }: any) {
     <div className="grid md:grid-cols-2 gap-4">
       <FieldGroup label="Título" required><input className={inp} value={form.title} onChange={e => set({ ...form, title: e.target.value })} placeholder="Título do relatório" /></FieldGroup>
       <FieldGroup label="Ano" required><input type="number" min="1900" max="2100" className={inp} value={form.year} onChange={e => set({ ...form, year: e.target.value })} /></FieldGroup>
-      <FieldGroup label="Resumo" required><textarea rows={3} className={ta} value={form.abstract} onChange={e => set({ ...form, abstract: e.target.value })} placeholder="Descreva o conteúdo..." /></FieldGroup>
+      <FieldGroup label="Resumo" required><RichTextarea rows={3} value={form.abstract} onChange={(v) => set({ ...form, abstract: v })} placeholder="Descreva o conteúdo..." /></FieldGroup>
       <div className="flex flex-col gap-4">
         <FieldGroup label="Projeto vinculado" required>
           <div className="h-10 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 px-3 flex items-center bg-neutral-50 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 text-sm cursor-not-allowed opacity-75">
@@ -85,7 +87,7 @@ function FormPresentation({ form, set, projects }: any) {
     <div className="grid md:grid-cols-2 gap-4">
       <FieldGroup label="Título" required><input className={inp} value={form.title} onChange={e => set({ ...form, title: e.target.value })} placeholder="Título da apresentação" /></FieldGroup>
       <FieldGroup label="Data" required><input type="date" className={inp} value={form.eventDate} onChange={e => set({ ...form, eventDate: e.target.value })} /></FieldGroup>
-      <FieldGroup label="Resumo" required><textarea rows={3} className={ta} value={form.abstract} onChange={e => set({ ...form, abstract: e.target.value })} placeholder="Descreva o conteúdo..." /></FieldGroup>
+      <FieldGroup label="Resumo" required><RichTextarea rows={3} value={form.abstract} onChange={(v) => set({ ...form, abstract: v })} placeholder="Descreva o conteúdo..." /></FieldGroup>
       <div className="flex flex-col gap-4">
         <FieldGroup label="Evento *"><input className={inp} value={form.journal} onChange={e => set({ ...form, journal: e.target.value })} placeholder="Ex: SBRC 2025, TechConf..." /></FieldGroup>
       </div>
@@ -116,7 +118,7 @@ function FormThesis({ form, set, projects }: any) {
     <div className="grid md:grid-cols-2 gap-4">
       <FieldGroup label="Título" required><input className={inp} value={form.title} onChange={e => set({ ...form, title: e.target.value })} placeholder="Título do TCC/monografia" /></FieldGroup>
       <FieldGroup label="Ano" required><input type="number" min="1900" max="2100" className={inp} value={form.year} onChange={e => set({ ...form, year: e.target.value })} /></FieldGroup>
-      <FieldGroup label="Resumo" required><textarea rows={3} className={ta} value={form.abstract} onChange={e => set({ ...form, abstract: e.target.value })} placeholder="Descreva o conteúdo e contribuições..." /></FieldGroup>
+      <FieldGroup label="Resumo" required><RichTextarea rows={3} value={form.abstract} onChange={(v) => set({ ...form, abstract: v })} placeholder="Descreva o conteúdo e contribuições..." /></FieldGroup>
       <div className="flex flex-col gap-4">
         <FieldGroup label="Orientador *"><input className={inp} value={form.advisor} onChange={e => set({ ...form, advisor: e.target.value })} placeholder="Nome do orientador" /></FieldGroup>
       </div>
@@ -191,6 +193,7 @@ export default function EditarPublicacaoPage() {
   const [formError, setFormError] = useState("");
   const [selectedAuthors, setSelectedAuthors] = useState<any[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const isRevisionRequested = (publication as any)?.revisionRequested === true;
 
   const myProjects = Array.isArray(myProjectsRaw) ? myProjectsRaw : [];
 
@@ -330,6 +333,9 @@ export default function EditarPublicacaoPage() {
       });
 
       // Redireciona de volta. O servidor já limpou as notificações de sugestão.
+      toast.success(isRevisionRequested ? "Revisão enviada para aprovação" : "Alterações salvas", {
+        description: isRevisionRequested ? "O professor responsável foi notificado." : undefined,
+      });
       router.push("/dashboard?tab=requests");
     } catch (err: any) {
       setFormError(err?.response?.data?.message ?? "Erro ao atualizar publicação.");
@@ -466,11 +472,11 @@ export default function EditarPublicacaoPage() {
           {/* ── Conteúdo completo + Imagens + Referências ── */}
           <div className="mt-5 pt-4 border-t border-neutral-100 dark:border-neutral-700 grid gap-4">
             <FieldGroup label="Texto completo / Explicação detalhada">
-              <textarea
+              <RichTextarea
                 rows={6}
-                className={ta}
+                minRows={6}
                 value={form.content}
-                onChange={e => setForm({ ...form, content: e.target.value })}
+                onChange={(v) => setForm({ ...form, content: v })}
                 placeholder="Texto extenso, metodologia, resultados, conclusões... Use ![descrição](url) para imagens inline."
               />
               <p className="text-xs text-neutral-400 mt-1">
@@ -569,7 +575,7 @@ export default function EditarPublicacaoPage() {
               <Button variant="secondary">Cancelar</Button>
             </Link>
             <Button onClick={handleUpdate} loading={updateMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700">
-              <Pencil size={14} /> Salvar alterações
+              <Pencil size={14} /> {isRevisionRequested ? "Reenviar para aprovação" : "Salvar alterações"}
             </Button>
           </div>
         </div>
