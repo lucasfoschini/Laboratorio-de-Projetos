@@ -36,6 +36,13 @@ export default function ProjetosPage() {
   const [sort,        setSort]        = useState("newest");
   const [showFilters, setShowFilters] = useState(false);
 
+  // Parâmetros passados para a API (status filtra no banco)
+  const apiParams = useMemo(() => {
+    const p: Record<string, string | number> = {};
+    if (status !== "all") p.status = status;
+    return p;
+  }, [status]);
+
   const {
     data,
     isLoading,
@@ -43,7 +50,7 @@ export default function ProjetosPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useProjects();
+  } = useProjects(apiParams);
 
   // Achata todas as páginas carregadas
   const allProjects = useMemo(
@@ -54,7 +61,7 @@ export default function ProjetosPage() {
   // Total e contagem de abertos vêm do backend (primeira página)
   const total     = data?.pages[0]?.total ?? 0;
 
-  // Filtro + ordenação client-side sobre os itens já carregados
+  // Filtro + ordenação client-side (busca por texto e área, status já vem filtrado do backend)
   const filtered = useMemo(() => {
     let result = [...allProjects];
 
@@ -68,7 +75,6 @@ export default function ProjetosPage() {
       );
     }
 
-    if (status !== "all") result = result.filter((p) => p.status === status);
     if (area !== "all") result = result.filter((p) => {
       const areas = (p as any).areas?.map((a: string) => a.toLowerCase()) ?? [];
       return p.area === area || areas.includes(area);
@@ -79,10 +85,11 @@ export default function ProjetosPage() {
     if (sort === "alpha")     result.sort((a, b) => a.title.localeCompare(b.title));
 
     return result;
-  }, [allProjects, debouncedSearch, status, area, sort]);
+  }, [allProjects, debouncedSearch, area, sort]);
 
-  const openCount        = allProjects.filter((p) => p.status === "open").length;
-  const hasActiveFilters = search || status !== "all" || area !== "all";
+  // Quando o filtro é "open", o total já vem do backend com a contagem correta
+  const openCount = status === "open" ? total : allProjects.filter((p) => p.status === "open").length;
+  const hasActiveFilters = search || status !== "all" || area !== "all" || sort !== "newest";
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -190,7 +197,7 @@ export default function ProjetosPage() {
 
               {hasActiveFilters && (
                 <button
-                  onClick={() => { setSearch(""); setStatus("all"); setArea("all"); }}
+                  onClick={() => { setSearch(""); setStatus("all"); setArea("all"); setSort("newest"); }}
                   className="text-xs text-danger-500 hover:text-danger-700 font-medium self-start sm:self-auto"
                 >
                   Limpar filtros
@@ -247,7 +254,7 @@ export default function ProjetosPage() {
           title="Nenhum projeto encontrado"
           description="Tente ajustar os filtros ou termos de busca."
           action={
-            <Button variant="secondary" size="sm" onClick={() => { setSearch(""); setStatus("all"); setArea("all"); }}>
+            <Button variant="secondary" size="sm" onClick={() => { setSearch(""); setStatus("all"); setArea("all"); setSort("newest"); }}>
               Limpar filtros
             </Button>
           }

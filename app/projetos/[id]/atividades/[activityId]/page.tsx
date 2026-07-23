@@ -33,10 +33,11 @@ export default function AtividadeDetalhePage() {
     </div>
   );
 
-  const isOwner      = user?.id === activity.project?.ownerId;
-  const isResponsible = (activity.responsibles ?? []).some((r: any) => r.id === user?.id);
-  const isOverdue    = !activity.done && new Date(activity.dueDate) < new Date();
-  const canToggle    = isOwner || isResponsible;
+  const isOwner       = user?.id === activity.project?.ownerId;
+  const isResponsible  = (activity.responsibles ?? []).some((r: any) => r.id === user?.id);
+  const isOverdue      = !activity.done && new Date(activity.dueDate) < new Date();
+  const completedLate  = activity.done && (activity as any).completedLate === true;
+  const canToggle      = isOwner || isResponsible;
 
   const handleDelete = async () => {
     if (!confirm(`Excluir a atividade "${activity.title}"?`)) return;
@@ -56,18 +57,33 @@ export default function AtividadeDetalhePage() {
       <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-6 shadow-card">
         {/* Status badge */}
         <div className="flex items-center gap-2 mb-4">
-          {activity.done ? (
-            <span className="text-xs bg-success-50 text-success-700 border border-success-200 px-2.5 py-1 rounded-full font-semibold">Concluída</span>
+          {activity.done && !completedLate ? (
+            <span className="text-xs bg-success-50 text-success-700 border border-success-200 px-2.5 py-1 rounded-full font-semibold">
+              Concluída
+            </span>
+          ) : completedLate ? (
+            <span className="text-xs bg-orange-50 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-full font-semibold">
+              Concluída com atraso
+            </span>
           ) : isOverdue ? (
-            <span className="text-xs bg-danger-50 text-danger-700 border border-danger-200 px-2.5 py-1 rounded-full font-semibold">Atrasada</span>
+            <span className="text-xs bg-danger-50 text-danger-700 border border-danger-200 px-2.5 py-1 rounded-full font-semibold">
+              Atrasada
+            </span>
           ) : (
-            <span className="text-xs bg-brand-50 text-brand-700 border border-brand-200 px-2.5 py-1 rounded-full font-semibold">Em andamento</span>
+            <span className="text-xs bg-brand-50 text-brand-700 border border-brand-200 px-2.5 py-1 rounded-full font-semibold">
+              Em andamento
+            </span>
           )}
           <span className="text-xs text-neutral-400">{activity.project?.title}</span>
         </div>
 
         {/* Título */}
-        <h1 className={cn("font-display font-extrabold text-2xl mb-3", activity.done ? "line-through text-neutral-400" : "text-neutral-900 dark:text-neutral-100")}>
+        <h1 className={cn(
+          "font-display font-extrabold text-2xl mb-3",
+          completedLate ? "line-through text-orange-400" :
+          activity.done ? "line-through text-neutral-400" :
+          "text-neutral-900 dark:text-neutral-100"
+        )}>
           {activity.title}
         </h1>
 

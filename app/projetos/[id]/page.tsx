@@ -596,13 +596,16 @@ export default function ProjectDetailPage() {
               ) : (
                 <div className="flex flex-col gap-3">
                   {activities.map((act: any) => {
-                    const isOverdue = !act.done && new Date(act.dueDate) < new Date();
+                    const isOverdue      = !act.done && new Date(act.dueDate) < new Date();
+                    const completedLate  = act.done && act.completedLate === true;
                     return (
                       <div
                         key={act.id}
                         className={cn(
                           "bg-white dark:bg-neutral-800 border rounded-2xl p-4 shadow-card flex items-start gap-3 transition-all",
-                          act.done
+                          completedLate
+                            ? "border-orange-200 dark:border-orange-800 opacity-70"
+                            : act.done
                             ? "border-neutral-100 dark:border-neutral-700 opacity-60"
                             : isOverdue
                             ? "border-danger-200 dark:border-danger-800 bg-danger-50 dark:bg-danger-950/20"
@@ -623,15 +626,27 @@ export default function ProjectDetailPage() {
                         </button>
                         <div className="flex-1 min-w-0">
                           <Link href={`/projetos/${id}/atividades/${act.id}`}>
-                            <p className={cn("text-sm font-semibold hover:text-brand-600 transition-colors cursor-pointer", act.done ? "line-through text-neutral-400 dark:text-neutral-500" : "text-neutral-900 dark:text-neutral-100")}>
+                            <p className={cn(
+                              "text-sm font-semibold hover:text-brand-600 transition-colors cursor-pointer",
+                              completedLate ? "line-through text-orange-400 dark:text-orange-500" :
+                              act.done ? "line-through text-neutral-400 dark:text-neutral-500" :
+                              "text-neutral-900 dark:text-neutral-100"
+                            )}>
                               {act.title}
                             </p>
                           </Link>
                           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">{act.description}</p>
                           <div className="flex items-center gap-3 mt-2 flex-wrap">
-                            <div className="flex items-center gap-1.5">
-                              <Avatar name={act.responsible?.name ?? "?"} size="sm" src={act.responsible?.avatar} />
-                              <span className="text-xs text-neutral-500 dark:text-neutral-400">{act.responsible?.name}</span>
+                            <div className="flex items-center gap-1">
+                              {(act.responsibles ?? []).slice(0, 3).map((r: any) => (
+                                <Avatar key={r.id} name={r.name ?? "?"} size="sm" src={r.avatar} title={r.name} />
+                              ))}
+                              {(act.responsibles ?? []).length > 0 && (
+                                <span className="text-xs text-neutral-500 dark:text-neutral-400 ml-1">
+                                  {(act.responsibles as any[])[0]?.name?.split(" ")[0]}
+                                  {(act.responsibles ?? []).length > 1 && ` +${(act.responsibles ?? []).length - 1}`}
+                                </span>
+                              )}
                             </div>
                             <span className={cn("text-xs flex items-center gap-1", isOverdue && !act.done ? "text-danger-600 font-semibold" : "text-neutral-400")}>
                               <Calendar size={11} />
@@ -640,8 +655,11 @@ export default function ProjectDetailPage() {
                                 <span className="ml-1 px-1.5 py-0.5 rounded-md bg-danger-100 dark:bg-danger-900 text-danger-700 dark:text-danger-300 text-[10px] font-bold">Atrasada</span>
                               )}
                             </span>
-                            {act.done && (
+                            {act.done && !completedLate && (
                               <span className="text-xs px-1.5 py-0.5 rounded-md bg-success-100 dark:bg-success-900 text-success-700 dark:text-success-300 font-semibold">Concluída</span>
+                            )}
+                            {completedLate && (
+                              <span className="text-xs px-1.5 py-0.5 rounded-md bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 font-semibold">Concluída com atraso</span>
                             )}
                           </div>
                         </div>

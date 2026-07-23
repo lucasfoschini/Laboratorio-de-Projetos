@@ -452,12 +452,12 @@ function DashboardContent({ initialTab }: { initialTab: string }) {
       </div>
 
       {/* ── Stats ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+      <div className={`grid gap-3 sm:gap-4 mb-4 sm:mb-6 ${isProfessor ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
         {[
-          { label: "Projetos criados", value: stats?.ownedCount      ?? 0, icon: FlaskConical, color: "bg-brand-50 dark:bg-brand-950 text-brand-600 dark:text-brand-400"      },
-          { label: "Sou membro",       value: stats?.memberCount     ?? 0, icon: Users,         color: "bg-violet-50 dark:bg-violet-950 text-violet-600 dark:text-violet-400"    },
-          { label: "Acompanhando",     value: stats?.subsCount       ?? 0, icon: Bell,          color: "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400"       },
-          { label: "Solicitações",     value: stats?.pendingRequests ?? 0, icon: Clock,         color: "bg-warning-50 dark:bg-warning-950 text-warning-700 dark:text-warning-400" },
+          ...(isProfessor ? [{ label: "Projetos criados", value: stats?.ownedCount ?? 0, icon: FlaskConical, color: "bg-brand-50 dark:bg-brand-950 text-brand-600 dark:text-brand-400" }] : []),
+          { label: "Sou membro",   value: stats?.memberCount     ?? 0, icon: Users,  color: "bg-violet-50 dark:bg-violet-950 text-violet-600 dark:text-violet-400"    },
+          { label: "Acompanhando", value: stats?.subsCount       ?? 0, icon: Bell,   color: "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400"       },
+          { label: "Solicitações", value: stats?.pendingRequests ?? 0, icon: Clock,  color: "bg-warning-50 dark:bg-warning-950 text-warning-700 dark:text-warning-400" },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-3 sm:p-4 shadow-card">
             <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center mb-2 sm:mb-3 ${color}`}>
@@ -500,17 +500,19 @@ function DashboardContent({ initialTab }: { initialTab: string }) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-display font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200">Meus projetos</h3>
+                  <h3 className="font-display font-bold text-sm sm:text-base text-neutral-800 dark:text-neutral-200">
+                    {isProfessor ? "Meus projetos" : "Projetos que participo"}
+                  </h3>
                   <button onClick={() => setTab("projects")} className="text-xs font-semibold text-brand-600 hover:text-brand-800 flex items-center gap-1">
                     Ver todos <ArrowRight size={12} />
                   </button>
                 </div>
-                {myProjects.slice(0, 3).map((p: any) => (
+                {(isProfessor ? myProjects : memberProjects).slice(0, 3).map((p: any) => (
                   <ProjectCard key={p.id} project={p} variant="compact" />
                 ))}
-                {myProjects.length === 0 && (
+                {(isProfessor ? myProjects : memberProjects).length === 0 && (
                   <div className="text-sm text-neutral-400 py-6 text-center border border-dashed border-neutral-200 dark:border-neutral-700 rounded-xl">
-                    Você ainda não participa de nenhum projeto.
+                    {isProfessor ? "Você ainda não tem projetos." : "Você ainda não participa de nenhum projeto."}
                     <br /><Link href="/projetos" className="text-brand-600 font-semibold mt-1 inline-block">Explorar projetos →</Link>
                   </div>
                 )}
