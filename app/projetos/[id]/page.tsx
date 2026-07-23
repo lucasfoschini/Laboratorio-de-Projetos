@@ -639,7 +639,7 @@ export default function ProjectDetailPage() {
                           <div className="flex items-center gap-3 mt-2 flex-wrap">
                             <div className="flex items-center gap-1">
                               {(act.responsibles ?? []).slice(0, 3).map((r: any) => (
-                                <Avatar key={r.id} name={r.name ?? "?"} size="sm" src={r.avatar} title={r.name} />
+                                <Avatar key={r.id} name={r.name ?? "?"} size="sm" src={r.avatar} />
                               ))}
                               {(act.responsibles ?? []).length > 0 && (
                                 <span className="text-xs text-neutral-500 dark:text-neutral-400 ml-1">
